@@ -1,0 +1,72 @@
+#![no_std]
+#![no_main]
+#![feature(type_alias_impl_trait)]
+#![macro_use]
+
+use embassy_nrf as _; // time driver
+use core::sync::atomic::{AtomicU32, Ordering};
+use embassy_time::{Duration, Timer};
+use embassy_executor::Spawner;
+use embassy_nrf::gpio::{AnyPin, Level, Output, OutputDrive, Pin, Input, Pull};
+use embassy_adafruit_clue::{nrf_default_config, red_led, white_led, button_a, button_b};
+use embassy_adafruit_clue;
+
+static BLINK_1_ON_MS: AtomicU32 = AtomicU32::new(100);
+static BLINK_2_ON_MS: AtomicU32 = AtomicU32::new(100);
+
+#[embassy_executor::task]
+async fn blink(pin_1: AnyPin, pin_2: AnyPin) {
+    let mut led_1 = Output::new(pin_1, Level::Low, OutputDrive::Standard);
+    let mut led_2 = Output::new(pin_2, Level::Low, OutputDrive::Standard);
+    loop {
+        led_1.set_high();
+        led_2.set_low();
+        Timer::after(Duration::from_millis(
+            BLINK_1_ON_MS.load(Ordering::Relaxed).into(),
+        ))
+        .await;
+        led_1.set_low();
+        led_2.set_high();
+        Timer::after(Duration::from_millis(
+            BLINK_2_ON_MS.load(Ordering::Relaxed).into(),
+        ))
+        .await;
+    }
+}
+const ON_INTERVALS_MS: [u32;5] = [100, 200, 400, 800, 1600];
+#[embassy_executor::task(pool_size = 2)]
+async fn button_task(mut pin: Input<'static, AnyPin>, on_ms: &'static AtomicU32) {
+    let mut cur_int: usize = 0;
+    loop {
+        on_ms.store(ON_INTERVALS_MS[cur_int], Ordering::Relaxed);
+        pin.wait_for_rising_edge().await;
+        cur_int += 1;
+        if cur_int >= ON_INTERVALS_MS.len() {
+            cur_int = 0;
+        }
+    }
+}
+#[embassy_executor::main]
+async fn main(spawner: Spawner) {
+    let nrf_config = nrf_default_config(false);
+    let nrf_periph= embassy_nrf::init(nrf_config);
+    spawner
+        .spawn(blink(
+            red_led!(nrf_periph).degrade(),
+            white_led!(nrf_periph).degrade(),
+        ))
+        .unwrap();
+
+    let button_a = Input::new(button_a!(nrf_periph).degrade(), Pull::Up);
+    spawner.spawn(button_task(button_a, &BLINK_1_ON_MS)).unwrap();
+
+    let button_b = Input::new(button_b!(nrf_periph).degrade(), Pull::Up);
+    spawner.spawn(button_task(button_b, &BLINK_2_ON_MS)).unwrap();
+}
+
+#[panic_handler] // panicking behavior
+unsafe fn panic(_pinfo: &core::panic::PanicInfo) -> ! {
+    loop {
+        cortex_m::asm::bkpt();
+    }
+}
