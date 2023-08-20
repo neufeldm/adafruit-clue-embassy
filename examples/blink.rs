@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 #![feature(type_alias_impl_trait)]
-#![macro_use]
 
 use embassy_nrf as _; // time driver
 use core::sync::atomic::{AtomicU32, Ordering};

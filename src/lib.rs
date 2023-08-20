@@ -134,6 +134,9 @@ macro_rules! tft_backlight {
     }
 }
 
+pub const TFT_XSIZE: u16 = 240;
+pub const TFT_YSIZE: u16 = 240;
+
 #[macro_export]
 macro_rules! a0 {
     ($p:ident) => {
