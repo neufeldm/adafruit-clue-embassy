@@ -5,6 +5,12 @@
 
 use embassy_nrf;
 use nrf_softdevice;
+use embassy_nrf::gpio::{Level, Output, OutputDrive, Pin};
+
+pub fn output_pin<'a, P: Pin>(pin: P, high: bool) -> Output<'a, P> {
+    Output::new(pin, if high { Level::High } else { Level::Low }, OutputDrive::Standard)
+}
+
 
 #[macro_export]
 macro_rules! red_led {
