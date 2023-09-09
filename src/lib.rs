@@ -4,13 +4,17 @@
 #![no_std]
 
 use embassy_nrf;
+use embassy_nrf::{spim, twim};
 use nrf_softdevice;
-use embassy_nrf::gpio::{Level, Output, OutputDrive, Pin};
+use embassy_nrf::gpio::{Level, Input, Pull, Output, OutputDrive, Pin};
 
 pub fn output_pin<'a, P: Pin>(pin: P, high: bool) -> Output<'a, P> {
     Output::new(pin, if high { Level::High } else { Level::Low }, OutputDrive::Standard)
 }
 
+pub fn input_pin<'a, P: Pin>(pin: P, up: bool) -> Input<'a, P> {
+    Input::new(pin, if up { Pull::Up } else { Pull::Down })
+}
 
 #[macro_export]
 macro_rules! red_led {
@@ -299,4 +303,18 @@ pub fn nrf_softdevice_default_config() -> nrf_softdevice::Config {
         }),
         ..Default::default()
     }
+}
+
+pub fn tft_spi_config() -> spim::Config {
+    let mut spi_config = spim::Config::default();
+    spi_config.frequency = spim::Frequency::M32; // M32?
+    spi_config.orc = 122;
+    spi_config.mode = spim::MODE_3;
+    spi_config
+}
+
+pub fn sensors_twim_config() -> twim::Config {
+    let mut twim_config = twim::Config::default();
+    twim_config.frequency = twim::Frequency::K400;
+    twim_config
 }

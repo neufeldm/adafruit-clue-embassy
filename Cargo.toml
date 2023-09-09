@@ -37,24 +37,24 @@ cortex-m-rt = "0.7.0"
 embassy-embedded-hal = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy" }
 
 #nb = "1.0.0"
-#shared-bus = "0.2.4"
-#heapless = "0.7.9"
+
+heapless = "0.7.9"
 # screen
 display-interface-spi = "0.4.1"
 embedded-graphics = "0.8.0"
 mipidsi = "0.7.1"
 
 # gyro/accel
-#lsm6ds33 = "0.3.0"
+lsm6ds33 = "0.3.0"
 # magnetometer
-#lis3mdl = { git = "https://github.com/ryanrightmer/lis3mdl" }
+lis3mdl = { git = "https://github.com/ryanrightmer/lis3mdl" }
 # prox/gesture/light
-#apds9960 = "0.1.0"
+apds9960 = "0.1.0"
 # humidity
-#sht3x = { git = "https://github.com/reitermarkus/sht3x-rs" }
+sht3x = { git = "https://github.com/reitermarkus/sht3x-rs" }
 # temp/pressure
-# XXX this has defmt version conflicts...
-#bmp280-rs = "0.1.1"
+# XXX stuck in embedded-hal dependency hell
+#bme280 = { version = "0.4.4", git = "https://github.com/neufeldm/bme280-rs" }
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.

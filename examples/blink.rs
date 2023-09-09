@@ -6,8 +6,8 @@ use embassy_nrf as _; // time driver
 use core::sync::atomic::{AtomicU32, Ordering};
 use embassy_time::{Duration, Timer};
 use embassy_executor::Spawner;
-use embassy_nrf::gpio::{AnyPin, Level, Output, OutputDrive, Pin, Input, Pull};
-use embassy_adafruit_clue::{nrf_default_config, red_led, white_led, button_a, button_b};
+use embassy_nrf::gpio::{AnyPin, Pin, Input};
+use embassy_adafruit_clue::{input_pin, output_pin, nrf_default_config, red_led, white_led, button_a, button_b};
 use embassy_adafruit_clue;
 
 static BLINK_1_ON_MS: AtomicU32 = AtomicU32::new(100);
@@ -15,8 +15,8 @@ static BLINK_2_ON_MS: AtomicU32 = AtomicU32::new(100);
 
 #[embassy_executor::task]
 async fn blink(pin_1: AnyPin, pin_2: AnyPin) {
-    let mut led_1 = Output::new(pin_1, Level::Low, OutputDrive::Standard);
-    let mut led_2 = Output::new(pin_2, Level::Low, OutputDrive::Standard);
+    let mut led_1 = output_pin(pin_1, false);
+    let mut led_2 = output_pin(pin_2, false);
     loop {
         led_1.set_high();
         led_2.set_low();
@@ -56,10 +56,10 @@ async fn main(spawner: Spawner) {
         ))
         .unwrap();
 
-    let button_a = Input::new(button_a!(nrf_periph).degrade(), Pull::Up);
+    let button_a = input_pin(button_a!(nrf_periph).degrade(), true);
     spawner.spawn(button_task(button_a, &BLINK_1_ON_MS)).unwrap();
 
-    let button_b = Input::new(button_b!(nrf_periph).degrade(), Pull::Up);
+    let button_b = input_pin(button_b!(nrf_periph).degrade(), true);
     spawner.spawn(button_task(button_b, &BLINK_2_ON_MS)).unwrap();
 }
 

@@ -5,7 +5,6 @@
 use embassy_nrf as _;
 use embassy_adafruit_clue::{output_pin, nrf_default_config, TFT_XSIZE, TFT_YSIZE, tft_cs, tft_sck, tft_mosi, tft_dc, tft_reset, tft_backlight, white_led };
 use embassy_adafruit_clue;
-use embassy_nrf::spis::MODE_3;
 use embassy_time::{Delay, Duration, Timer};
 use embassy_executor::Spawner;
 use embassy_nrf::{bind_interrupts, peripherals, spim};
@@ -31,11 +30,7 @@ async fn main(_spawner: Spawner) {
     let mut _backlight = output_pin(tft_backlight!(nrf_periph), true);
     let _cs_pin = output_pin(tft_cs!(nrf_periph), false);
 
-    let mut spi_config = spim::Config::default();
-    spi_config.frequency = spim::Frequency::M32; // M32?
-    spi_config.orc = 122;
-    spi_config.mode = MODE_3;
-
+    let spi_config = embassy_adafruit_clue::tft_spi_config();
     let spi = spim::Spim::new_txonly(
         nrf_periph.SPI3,
         Irqs,
