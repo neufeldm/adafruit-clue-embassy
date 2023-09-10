@@ -4,7 +4,7 @@
 
 use core::cell::RefCell;
 use embassy_nrf as _;
-use embassy_adafruit_clue::{
+use adafruit_clue_embassy::{
     output_pin,
     nrf_default_config,
     TFT_XSIZE,
@@ -19,7 +19,7 @@ use embassy_adafruit_clue::{
     sensors_i2c_scl,
     sensors_i2c_sda,
 };
-use embassy_adafruit_clue;
+use adafruit_clue_embassy;
 use embassy_time::{Delay, Duration, Timer};
 use embassy_executor::Spawner;
 use embassy_nrf::{bind_interrupts, peripherals, spim, twim};
@@ -71,7 +71,7 @@ async fn main(_spawner: Spawner) {
 
     let mut _tft_backlight = output_pin(tft_backlight!(nrf_periph), true);
     let _tft_cs_pin = output_pin(tft_cs!(nrf_periph), false);
-    let tft_spi_config = embassy_adafruit_clue::tft_spi_config();
+    let tft_spi_config = adafruit_clue_embassy::tft_spi_config();
     let tft_spi = spim::Spim::new_txonly(
         nrf_periph.SPI3,
         Irqs,
@@ -90,7 +90,7 @@ async fn main(_spawner: Spawner) {
         .unwrap();
     display.clear(Rgb565::BLACK).unwrap();
 
-    let sensors_twim_config = embassy_adafruit_clue::sensors_twim_config();
+    let sensors_twim_config = adafruit_clue_embassy::sensors_twim_config();
     let sensors_twim =
         twim::Twim::new(nrf_periph.TWISPI1,
                         Irqs,

@@ -3,8 +3,8 @@
 #![feature(type_alias_impl_trait)]
 
 use embassy_nrf as _;
-use embassy_adafruit_clue::{output_pin, nrf_default_config, TFT_XSIZE, TFT_YSIZE, tft_cs, tft_sck, tft_mosi, tft_dc, tft_reset, tft_backlight, white_led };
-use embassy_adafruit_clue;
+use adafruit_clue_embassy::{output_pin, nrf_default_config, TFT_XSIZE, TFT_YSIZE, tft_cs, tft_sck, tft_mosi, tft_dc, tft_reset, tft_backlight, white_led };
+use adafruit_clue_embassy;
 use embassy_time::{Delay, Duration, Timer};
 use embassy_executor::Spawner;
 use embassy_nrf::{bind_interrupts, peripherals, spim};
@@ -30,7 +30,7 @@ async fn main(_spawner: Spawner) {
     let mut _backlight = output_pin(tft_backlight!(nrf_periph), true);
     let _cs_pin = output_pin(tft_cs!(nrf_periph), false);
 
-    let spi_config = embassy_adafruit_clue::tft_spi_config();
+    let spi_config = adafruit_clue_embassy::tft_spi_config();
     let spi = spim::Spim::new_txonly(
         nrf_periph.SPI3,
         Irqs,

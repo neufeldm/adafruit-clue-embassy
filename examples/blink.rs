@@ -7,8 +7,8 @@ use core::sync::atomic::{AtomicU32, Ordering};
 use embassy_time::{Duration, Timer};
 use embassy_executor::Spawner;
 use embassy_nrf::gpio::{AnyPin, Pin, Input};
-use embassy_adafruit_clue::{input_pin, output_pin, nrf_default_config, red_led, white_led, button_a, button_b};
-use embassy_adafruit_clue;
+use adafruit_clue_embassy::{input_pin, output_pin, nrf_default_config, red_led, white_led, button_a, button_b};
+use adafruit_clue_embassy;
 
 static BLINK_1_ON_MS: AtomicU32 = AtomicU32::new(100);
 static BLINK_2_ON_MS: AtomicU32 = AtomicU32::new(100);
