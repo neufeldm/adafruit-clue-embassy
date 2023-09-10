@@ -5,8 +5,13 @@
 
 use embassy_nrf;
 use embassy_nrf::{spim, twim};
-use nrf_softdevice;
 use embassy_nrf::gpio::{Level, Input, Pull, Output, OutputDrive, Pin};
+use nrf_softdevice::ble::gatt_server::builder::ServiceBuilder;
+use nrf_softdevice::ble::gatt_server::characteristic::{Attribute, Metadata, Properties};
+use nrf_softdevice::ble::gatt_server::RegisterError;
+use nrf_softdevice::ble::{gatt_server, Connection, Uuid};
+use nrf_softdevice::Softdevice;
+use nrf_softdevice;
 
 pub fn output_pin<'a, P: Pin>(pin: P, high: bool) -> Output<'a, P> {
     Output::new(pin, if high { Level::High } else { Level::Low }, OutputDrive::Standard)
@@ -317,4 +322,77 @@ pub fn sensors_twim_config() -> twim::Config {
     let mut twim_config = twim::Config::default();
     twim_config.frequency = twim::Frequency::K400;
     twim_config
+}
+
+pub const ADAFRUIT_COMPANY_UUID: u16 = 0x0822;
+// adafruit base UUID ADAFxxxx-C332-42A8-93BD-25E905756CB8
+
+pub const NUS_SERVICE_UUID: [u8; 16] = [
+    0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E,
+];
+pub const NUS_SERVICE_RX_UUID: [u8; 16] = [
+    0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x02, 0x00, 0x40, 0x6E,
+];
+pub const NUS_SERVICE_TX_UUID: [u8; 16] = [
+    0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x03, 0x00, 0x40, 0x6E,
+];
+// 1 byte for the opcode, 2 bytes for the handle
+pub const NUS_MTU: u16 = nrf_softdevice::raw::BLE_GATT_ATT_MTU_DEFAULT as u16 - 3;
+pub trait NordicUARTRX {
+    fn rx(&self, data: &[u8]) -> ();
+}
+
+pub struct NordicUARTService<RX: NordicUARTRX> {
+    rx_value_handle: u16,
+    _rx_cccd_handle: u16,
+    tx_value_handle: u16,
+    _tx_cccd_handle: u16,
+    rx_handler: RX,
+}
+
+impl<RX: NordicUARTRX> NordicUARTService<RX>
+{
+    pub fn new(sd: &mut Softdevice, rx_handler: RX) -> Result<Self, RegisterError> {
+        let service_uuid = Uuid::new_128(&NUS_SERVICE_UUID);
+
+        let mut service_builder = ServiceBuilder::new(sd, service_uuid)?;
+
+        let rx_uuid = Uuid::new_128(&NUS_SERVICE_RX_UUID);
+        let rx_attr = Attribute::new(&[0u8; NUS_MTU as usize]).variable_len(NUS_MTU);
+        let rx_metadata = Metadata::new(Properties::new().write_without_response().write());
+        let rx_characteristic_builder =
+            service_builder.add_characteristic(rx_uuid, rx_attr, rx_metadata)?;
+        let rx_characteristic_handles = rx_characteristic_builder.build();
+
+        let tx_uuid = Uuid::new_128(&NUS_SERVICE_TX_UUID);
+        let tx_attr = Attribute::new(&[0u8; NUS_MTU as usize]).variable_len(NUS_MTU);
+        let tx_metadata = Metadata::new(Properties::new().notify());
+        let tx_characteristic_builder =
+            service_builder.add_characteristic(tx_uuid, tx_attr, tx_metadata)?;
+        let tx_characteristic_handles = tx_characteristic_builder.build();
+
+        let _service_handle = service_builder.build();
+
+        Ok(NordicUARTService {
+            rx_value_handle: rx_characteristic_handles.value_handle,
+            _rx_cccd_handle: rx_characteristic_handles.cccd_handle,
+            tx_value_handle: tx_characteristic_handles.value_handle,
+            _tx_cccd_handle: tx_characteristic_handles.cccd_handle,
+            rx_handler: rx_handler,
+        })
+    }
+
+    pub fn tx_notify(
+        &self,
+        conn: &Connection,
+        buf: &[u8],
+    ) -> Result<(), gatt_server::NotifyValueError> {
+        gatt_server::notify_value(conn, self.tx_value_handle, buf)
+    }
+
+    pub fn on_write(&self, _conn: &Connection, handle: u16, data: &[u8]) {
+        if handle == self.rx_value_handle && !data.is_empty() {
+            self.rx_handler.rx(data);
+        }
+    }
 }
