@@ -4,17 +4,21 @@
 #![no_std]
 
 use embassy_nrf;
+use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pin, Pull};
 use embassy_nrf::{spim, twim};
-use embassy_nrf::gpio::{Level, Input, Pull, Output, OutputDrive, Pin};
+use nrf_softdevice;
 use nrf_softdevice::ble::gatt_server::builder::ServiceBuilder;
 use nrf_softdevice::ble::gatt_server::characteristic::{Attribute, Metadata, Properties};
 use nrf_softdevice::ble::gatt_server::RegisterError;
 use nrf_softdevice::ble::{gatt_server, Connection, Uuid};
 use nrf_softdevice::Softdevice;
-use nrf_softdevice;
 
 pub fn output_pin<'a, P: Pin>(pin: P, high: bool) -> Output<'a, P> {
-    Output::new(pin, if high { Level::High } else { Level::Low }, OutputDrive::Standard)
+    Output::new(
+        pin,
+        if high { Level::High } else { Level::Low },
+        OutputDrive::Standard,
+    )
 }
 
 pub fn input_pin<'a, P: Pin>(pin: P, up: bool) -> Input<'a, P> {
@@ -25,128 +29,126 @@ pub fn input_pin<'a, P: Pin>(pin: P, up: bool) -> Input<'a, P> {
 macro_rules! red_led {
     ($p:ident) => {
         $p.P1_01
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! white_led {
     ($p:ident) => {
         $p.P0_10
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! button_a {
     ($p:ident) => {
         $p.P1_02
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! button_b {
     ($p:ident) => {
         $p.P1_10
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! sensors_i2c_sda {
     ($p:ident) => {
         $p.P0_24
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! sensors_i2c_scl {
     ($p:ident) => {
         $p.P0_25
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! neopixel {
     ($p:ident) => {
         $p.P0_16
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! pdm_data {
     ($p:ident) => {
         $p.P0_00
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! pdm_clock {
     ($p:ident) => {
         $p.P0_01
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! speaker {
     ($p:ident) => {
         $p.P1_00
-    }
+    };
 }
-
 
 #[macro_export]
 macro_rules! accel_gyro_irq {
     ($p:ident) => {
         $p.P1_06
-    }
+    };
 }
-
 
 #[macro_export]
 macro_rules! prox_light_irq {
     ($p:ident) => {
         $p.P0_09
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! tft_sck {
     ($p:ident) => {
         $p.P0_14
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! tft_mosi {
     ($p:ident) => {
         $p.P0_15
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! tft_cs {
     ($p:ident) => {
         $p.P0_12
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! tft_dc {
     ($p:ident) => {
         $p.P0_13
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! tft_reset {
     ($p:ident) => {
         $p.P1_03
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! tft_backlight {
     ($p:ident) => {
         $p.P1_05
-    }
+    };
 }
 
 pub const TFT_XSIZE: u16 = 240;
@@ -156,105 +158,105 @@ pub const TFT_YSIZE: u16 = 240;
 macro_rules! a0 {
     ($p:ident) => {
         $p.P0_31
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! a1 {
     ($p:ident) => {
         $p.P0_29
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! a2 {
     ($p:ident) => {
         $p.P0_04
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! a3 {
     ($p:ident) => {
         $p.P0_05
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! a4 {
     ($p:ident) => {
         $p.P0_03
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! a5 {
     ($p:ident) => {
         $p.P0_28
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! a6 {
     ($p:ident) => {
         $p.P0_02
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! a7 {
     ($p:ident) => {
         $p.P0_30
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! d6 {
     ($p:ident) => {
         $p.P1_09
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! d7 {
     ($p:ident) => {
         $p.P0_07
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! d8 {
     ($p:ident) => {
         $p.P1_07
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! d9 {
     ($p:ident) => {
         $p.P0_27
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! d13 {
     ($p:ident) => {
         $p.P0_08
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! d14 {
     ($p:ident) => {
         $p.P0_06
-    }
+    };
 }
 
 #[macro_export]
 macro_rules! d15 {
     ($p:ident) => {
         $p.P0_26
-    }
+    };
 }
 
 pub fn nrf_default_config(softdevice: bool) -> embassy_nrf::config::Config {
@@ -288,7 +290,9 @@ pub fn nrf_softdevice_default_config() -> nrf_softdevice::Config {
             event_length: nrf_softdevice::raw::BLE_GAP_EVENT_LENGTH_DEFAULT as u16,
         }),
         // Max. attribute size
-        conn_gatt: Some(nrf_softdevice::raw::ble_gatt_conn_cfg_t { att_mtu: nrf_softdevice::raw::BLE_GATT_ATT_MTU_DEFAULT as u16 }),
+        conn_gatt: Some(nrf_softdevice::raw::ble_gatt_conn_cfg_t {
+            att_mtu: nrf_softdevice::raw::BLE_GATT_ATT_MTU_DEFAULT as u16,
+        }),
         // attribute table size
         // needs to scale depending on how much "stuff" you've got,
         // number of characteristics
@@ -324,6 +328,13 @@ pub fn sensors_twim_config() -> twim::Config {
     twim_config
 }
 
+// Sensor I2C IDs
+pub const I2C_GYROACCEL: u8 = 0x6A;
+pub const I2C_MAGNETOMETER: u8 = 0x1c;
+pub const I2C_GESTURE: u8 = 0x39;
+pub const I2C_HUMIDITY: u8 = 0x44;
+pub const I2C_TEMPPRESSURE: u8 = 0x77;
+
 pub const ADAFRUIT_COMPANY_UUID: u16 = 0x0822;
 // adafruit base UUID ADAFxxxx-C332-42A8-93BD-25E905756CB8
 
@@ -350,8 +361,7 @@ pub struct NordicUARTService<RX: NordicUARTRX> {
     rx_handler: RX,
 }
 
-impl<RX: NordicUARTRX> NordicUARTService<RX>
-{
+impl<RX: NordicUARTRX> NordicUARTService<RX> {
     pub fn new(sd: &mut Softdevice, rx_handler: RX) -> Result<Self, RegisterError> {
         let service_uuid = Uuid::new_128(&NUS_SERVICE_UUID);
 

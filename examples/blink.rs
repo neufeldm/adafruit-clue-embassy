@@ -2,13 +2,15 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
-use embassy_nrf as _; // time driver
-use core::sync::atomic::{AtomicU32, Ordering};
-use embassy_time::{Duration, Timer};
-use embassy_executor::Spawner;
-use embassy_nrf::gpio::{AnyPin, Pin, Input};
-use adafruit_clue_embassy::{input_pin, output_pin, nrf_default_config, red_led, white_led, button_a, button_b};
 use adafruit_clue_embassy;
+use adafruit_clue_embassy::{
+    button_a, button_b, input_pin, nrf_default_config, output_pin, red_led, white_led,
+};
+use core::sync::atomic::{AtomicU32, Ordering};
+use embassy_executor::Spawner;
+use embassy_nrf as _; // time driver
+use embassy_nrf::gpio::{AnyPin, Input, Pin};
+use embassy_time::{Duration, Timer};
 
 static BLINK_1_ON_MS: AtomicU32 = AtomicU32::new(100);
 static BLINK_2_ON_MS: AtomicU32 = AtomicU32::new(100);
@@ -32,7 +34,7 @@ async fn blink(pin_1: AnyPin, pin_2: AnyPin) {
         .await;
     }
 }
-const ON_INTERVALS_MS: [u32;5] = [100, 200, 400, 800, 1600];
+const ON_INTERVALS_MS: [u32; 5] = [100, 200, 400, 800, 1600];
 #[embassy_executor::task(pool_size = 2)]
 async fn button_task(mut pin: Input<'static, AnyPin>, on_ms: &'static AtomicU32) {
     let mut cur_int: usize = 0;
@@ -48,7 +50,7 @@ async fn button_task(mut pin: Input<'static, AnyPin>, on_ms: &'static AtomicU32)
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let nrf_config = nrf_default_config(false);
-    let nrf_periph= embassy_nrf::init(nrf_config);
+    let nrf_periph = embassy_nrf::init(nrf_config);
     spawner
         .spawn(blink(
             red_led!(nrf_periph).degrade(),
@@ -57,10 +59,14 @@ async fn main(spawner: Spawner) {
         .unwrap();
 
     let button_a = input_pin(button_a!(nrf_periph).degrade(), true);
-    spawner.spawn(button_task(button_a, &BLINK_1_ON_MS)).unwrap();
+    spawner
+        .spawn(button_task(button_a, &BLINK_1_ON_MS))
+        .unwrap();
 
     let button_b = input_pin(button_b!(nrf_periph).degrade(), true);
-    spawner.spawn(button_task(button_b, &BLINK_2_ON_MS)).unwrap();
+    spawner
+        .spawn(button_task(button_b, &BLINK_2_ON_MS))
+        .unwrap();
 }
 
 #[panic_handler] // panicking behavior

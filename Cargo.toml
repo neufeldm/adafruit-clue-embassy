@@ -54,8 +54,7 @@ apds9960 = "0.1.0"
 # humidity
 sht3x = { git = "https://github.com/reitermarkus/sht3x-rs" }
 # temp/pressure
-# XXX stuck in embedded-hal dependency hell
-#bme280 = { version = "0.4.4", git = "https://github.com/neufeldm/bme280-rs" }
+bmp280-rs = "0.1.1"
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.
