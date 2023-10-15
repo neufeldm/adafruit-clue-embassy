@@ -30,7 +30,7 @@ embassy-time = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy
 #{ version = "1.2.0", git = "https://github.com/embassy-rs/" }
 #embassy-net = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy", features = ["nightly", "tcp", "dhcpv4", "medium-ethernet"], optional=true }
 #embassy-usb = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy", features = ["msos-descriptor"], optional=true }
-#futures = { version = "0.3.5", default-features = false }
+futures = { version = "0.3.5", default-features = false }
 #embedded-io = "0.4.0"
 #static_cell = "1.1"
 cortex-m = { version = "0.7.6", features = ["inline-asm"] }

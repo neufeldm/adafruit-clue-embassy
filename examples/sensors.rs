@@ -4,8 +4,8 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    nrf_default_config, output_pin, sensors_i2c_scl, sensors_i2c_sda, tft_backlight, tft_cs,
-    tft_dc, tft_mosi, tft_reset, tft_sck, TFT_XSIZE, TFT_YSIZE,
+    lcd_backlight, lcd_cs, lcd_dc, lcd_mosi, lcd_reset, lcd_sck, nrf_default_config, output_pin,
+    sensors_i2c_scl, sensors_i2c_sda, LCD_XSIZE, LCD_YSIZE,
 };
 use core::cell::RefCell;
 use embassy_embedded_hal::shared_bus::blocking::i2c::I2cDevice;
@@ -58,25 +58,25 @@ async fn main(_spawner: Spawner) {
     let nrf_periph = embassy_nrf::init(nrf_config);
 
     // Fire up the TFT.
-    let mut _tft_backlight = output_pin(tft_backlight!(nrf_periph), true);
-    let _tft_cs_pin = output_pin(tft_cs!(nrf_periph), false);
-    let tft_spi_config = adafruit_clue_embassy::tft_spi_config();
-    let tft_spi = spim::Spim::new_txonly(
+    let mut _lcd_backlight = output_pin(lcd_backlight!(nrf_periph), true);
+    let _lcd_cs_pin = output_pin(lcd_cs!(nrf_periph), false);
+    let lcd_spi_config = adafruit_clue_embassy::lcd_spi_config();
+    let lcd_spi = spim::Spim::new_txonly(
         nrf_periph.SPI3,
         Irqs,
-        tft_sck!(nrf_periph),
-        tft_mosi!(nrf_periph),
-        tft_spi_config,
+        lcd_sck!(nrf_periph),
+        lcd_mosi!(nrf_periph),
+        lcd_spi_config,
     );
-    let tft_spi_interface = SPIInterfaceNoCS::new(tft_spi, output_pin(tft_dc!(nrf_periph), false));
-    let mut tft_delay = Delay {};
-    let mut display = Builder::st7789(tft_spi_interface)
-        .with_display_size(TFT_XSIZE, TFT_YSIZE)
+    let lcd_spi_interface = SPIInterfaceNoCS::new(lcd_spi, output_pin(lcd_dc!(nrf_periph), false));
+    let mut lcd_delay = Delay {};
+    let mut display = Builder::st7789(lcd_spi_interface)
+        .with_display_size(LCD_XSIZE, LCD_YSIZE)
         .with_orientation(mipidsi::Orientation::LandscapeInverted(true))
         .with_invert_colors(mipidsi::ColorInversion::Inverted)
         .init(
-            &mut tft_delay,
-            Some(output_pin(tft_reset!(nrf_periph), false)),
+            &mut lcd_delay,
+            Some(output_pin(lcd_reset!(nrf_periph), false)),
         )
         .unwrap();
     display.clear(Rgb565::BLACK).unwrap();

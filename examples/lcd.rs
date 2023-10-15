@@ -4,8 +4,8 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    nrf_default_config, output_pin, tft_backlight, tft_cs, tft_dc, tft_mosi, tft_reset, tft_sck,
-    white_led, TFT_XSIZE, TFT_YSIZE,
+    lcd_backlight, lcd_cs, lcd_dc, lcd_mosi, lcd_reset, lcd_sck, nrf_default_config, output_pin,
+    white_led, LCD_XSIZE, LCD_YSIZE,
 };
 use display_interface_spi::SPIInterfaceNoCS;
 use embassy_executor::Spawner;
@@ -30,26 +30,26 @@ bind_interrupts!(struct Irqs {
 async fn main(_spawner: Spawner) {
     let nrf_config = nrf_default_config(false);
     let nrf_periph = embassy_nrf::init(nrf_config);
-    let mut _backlight = output_pin(tft_backlight!(nrf_periph), true);
-    let _cs_pin = output_pin(tft_cs!(nrf_periph), false);
+    let mut _backlight = output_pin(lcd_backlight!(nrf_periph), true);
+    let _cs_pin = output_pin(lcd_cs!(nrf_periph), false);
 
-    let spi_config = adafruit_clue_embassy::tft_spi_config();
+    let spi_config = adafruit_clue_embassy::lcd_spi_config();
     let spi = spim::Spim::new_txonly(
         nrf_periph.SPI3,
         Irqs,
-        tft_sck!(nrf_periph),
-        tft_mosi!(nrf_periph),
+        lcd_sck!(nrf_periph),
+        lcd_mosi!(nrf_periph),
         spi_config,
     );
 
-    let di = SPIInterfaceNoCS::new(spi, output_pin(tft_dc!(nrf_periph), false));
+    let di = SPIInterfaceNoCS::new(spi, output_pin(lcd_dc!(nrf_periph), false));
 
     let mut delay = Delay {};
     let mut display = Builder::st7789(di)
-        .with_display_size(TFT_XSIZE, TFT_YSIZE)
+        .with_display_size(LCD_XSIZE, LCD_YSIZE)
         .with_orientation(mipidsi::Orientation::LandscapeInverted(true))
         .with_invert_colors(mipidsi::ColorInversion::Inverted)
-        .init(&mut delay, Some(output_pin(tft_reset!(nrf_periph), false)))
+        .init(&mut delay, Some(output_pin(lcd_reset!(nrf_periph), false)))
         .unwrap();
     display.clear(Rgb565::BLACK).unwrap();
     let text_style = MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE);

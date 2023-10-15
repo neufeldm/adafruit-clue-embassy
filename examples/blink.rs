@@ -35,7 +35,7 @@ async fn blink(pin_1: AnyPin, pin_2: AnyPin) {
     }
 }
 const ON_INTERVALS_MS: [u32; 5] = [100, 200, 400, 800, 1600];
-#[embassy_executor::task(pool_size = 2)]
+#[embassy_executor::task]
 async fn button_task(mut pin: Input<'static, AnyPin>, on_ms: &'static AtomicU32) {
     let mut cur_int: usize = 0;
     loop {

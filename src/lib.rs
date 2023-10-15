@@ -7,12 +7,13 @@ use embassy_nrf;
 use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pin, Pull};
 use embassy_nrf::{spim, twim};
 use nrf_softdevice;
-use nrf_softdevice::ble::gatt_server::builder::ServiceBuilder;
-use nrf_softdevice::ble::gatt_server::characteristic::{Attribute, Metadata, Properties};
-use nrf_softdevice::ble::gatt_server::RegisterError;
-use nrf_softdevice::ble::{gatt_server, Connection, Uuid};
-use nrf_softdevice::Softdevice;
+//use nrf_softdevice::ble::gatt_server::builder::ServiceBuilder;
+//use nrf_softdevice::ble::gatt_server::characteristic::{Attribute, Metadata, Properties};
+//use nrf_softdevice::ble::gatt_server::RegisterError;
+//use nrf_softdevice::ble::{gatt_server, Connection, Uuid};
+//use nrf_softdevice::Softdevice;
 
+/// Take a raw board pin and turn it into an output.
 pub fn output_pin<'a, P: Pin>(pin: P, high: bool) -> Output<'a, P> {
     Output::new(
         pin,
@@ -21,10 +22,12 @@ pub fn output_pin<'a, P: Pin>(pin: P, high: bool) -> Output<'a, P> {
     )
 }
 
+/// Take a raw board pin and turn it into an input.
 pub fn input_pin<'a, P: Pin>(pin: P, up: bool) -> Input<'a, P> {
     Input::new(pin, if up { Pull::Up } else { Pull::Down })
 }
 
+/// Get pin for red LED on back of Clue.
 #[macro_export]
 macro_rules! red_led {
     ($p:ident) => {
@@ -32,6 +35,7 @@ macro_rules! red_led {
     };
 }
 
+/// Get pin for white LEDs on front of Clue.
 #[macro_export]
 macro_rules! white_led {
     ($p:ident) => {
@@ -39,6 +43,7 @@ macro_rules! white_led {
     };
 }
 
+/// Get pin for button "A" (left) on front of Clue.
 #[macro_export]
 macro_rules! button_a {
     ($p:ident) => {
@@ -46,6 +51,7 @@ macro_rules! button_a {
     };
 }
 
+/// Get pin for button "B" (right) on front of Clue.
 #[macro_export]
 macro_rules! button_b {
     ($p:ident) => {
@@ -53,6 +59,7 @@ macro_rules! button_b {
     };
 }
 
+/// SDA pin for I2C bus connected to sensors.
 #[macro_export]
 macro_rules! sensors_i2c_sda {
     ($p:ident) => {
@@ -60,6 +67,7 @@ macro_rules! sensors_i2c_sda {
     };
 }
 
+/// SCL pin for I2C bus connected to sensors.
 #[macro_export]
 macro_rules! sensors_i2c_scl {
     ($p:ident) => {
@@ -67,6 +75,7 @@ macro_rules! sensors_i2c_scl {
     };
 }
 
+/// Pin connected to neopixel on Clue.
 #[macro_export]
 macro_rules! neopixel {
     ($p:ident) => {
@@ -74,6 +83,7 @@ macro_rules! neopixel {
     };
 }
 
+/// Pin connected to the PDM microphone data line.
 #[macro_export]
 macro_rules! pdm_data {
     ($p:ident) => {
@@ -81,6 +91,7 @@ macro_rules! pdm_data {
     };
 }
 
+/// Pin connected to the PDM microphone clock.
 #[macro_export]
 macro_rules! pdm_clock {
     ($p:ident) => {
@@ -88,6 +99,7 @@ macro_rules! pdm_clock {
     };
 }
 
+/// Pin connected to the speaker on the Clue.
 #[macro_export]
 macro_rules! speaker {
     ($p:ident) => {
@@ -95,6 +107,7 @@ macro_rules! speaker {
     };
 }
 
+/// Pin connected to the accelerometer/gyro.
 #[macro_export]
 macro_rules! accel_gyro_irq {
     ($p:ident) => {
@@ -102,6 +115,7 @@ macro_rules! accel_gyro_irq {
     };
 }
 
+/// Pin connected to the proximity/light sensor.
 #[macro_export]
 macro_rules! prox_light_irq {
     ($p:ident) => {
@@ -109,51 +123,58 @@ macro_rules! prox_light_irq {
     };
 }
 
+/// Pin connected to the LCD SPI SCK line.
 #[macro_export]
-macro_rules! tft_sck {
+macro_rules! lcd_sck {
     ($p:ident) => {
         $p.P0_14
     };
 }
 
+/// Pin connected to the LCD SPI MOSI line.
 #[macro_export]
-macro_rules! tft_mosi {
+macro_rules! lcd_mosi {
     ($p:ident) => {
         $p.P0_15
     };
 }
 
+/// Pin connected to the LCD SPI CS line.
 #[macro_export]
-macro_rules! tft_cs {
+macro_rules! lcd_cs {
     ($p:ident) => {
         $p.P0_12
     };
 }
 
+/// Pin connected to the LCD SPI DC line.
 #[macro_export]
-macro_rules! tft_dc {
+macro_rules! lcd_dc {
     ($p:ident) => {
         $p.P0_13
     };
 }
 
+/// Pin connected to the LCD reset line.
 #[macro_export]
-macro_rules! tft_reset {
+macro_rules! lcd_reset {
     ($p:ident) => {
         $p.P1_03
     };
 }
 
+/// Pin connected to the LCD backlight (high to turn on).
 #[macro_export]
-macro_rules! tft_backlight {
+macro_rules! lcd_backlight {
     ($p:ident) => {
         $p.P1_05
     };
 }
 
-pub const TFT_XSIZE: u16 = 240;
-pub const TFT_YSIZE: u16 = 240;
+pub const LCD_XSIZE: u16 = 240;
+pub const LCD_YSIZE: u16 = 240;
 
+/// CircuitPython pin a0
 #[macro_export]
 macro_rules! a0 {
     ($p:ident) => {
@@ -161,6 +182,7 @@ macro_rules! a0 {
     };
 }
 
+/// CircuitPython pin a1
 #[macro_export]
 macro_rules! a1 {
     ($p:ident) => {
@@ -168,6 +190,7 @@ macro_rules! a1 {
     };
 }
 
+/// CircuitPython pin a2
 #[macro_export]
 macro_rules! a2 {
     ($p:ident) => {
@@ -175,6 +198,7 @@ macro_rules! a2 {
     };
 }
 
+/// CircuitPython pin a3
 #[macro_export]
 macro_rules! a3 {
     ($p:ident) => {
@@ -182,6 +206,7 @@ macro_rules! a3 {
     };
 }
 
+/// CircuitPython pin a4
 #[macro_export]
 macro_rules! a4 {
     ($p:ident) => {
@@ -189,6 +214,7 @@ macro_rules! a4 {
     };
 }
 
+/// CircuitPython pin a5
 #[macro_export]
 macro_rules! a5 {
     ($p:ident) => {
@@ -196,6 +222,7 @@ macro_rules! a5 {
     };
 }
 
+/// CircuitPython pin a6
 #[macro_export]
 macro_rules! a6 {
     ($p:ident) => {
@@ -203,6 +230,7 @@ macro_rules! a6 {
     };
 }
 
+/// CircuitPython pin a7
 #[macro_export]
 macro_rules! a7 {
     ($p:ident) => {
@@ -210,6 +238,7 @@ macro_rules! a7 {
     };
 }
 
+/// CircuitPython pin d6
 #[macro_export]
 macro_rules! d6 {
     ($p:ident) => {
@@ -217,6 +246,7 @@ macro_rules! d6 {
     };
 }
 
+/// CircuitPython pin d7
 #[macro_export]
 macro_rules! d7 {
     ($p:ident) => {
@@ -224,6 +254,7 @@ macro_rules! d7 {
     };
 }
 
+/// CircuitPython pin d8
 #[macro_export]
 macro_rules! d8 {
     ($p:ident) => {
@@ -231,6 +262,7 @@ macro_rules! d8 {
     };
 }
 
+/// CircuitPython pin d9
 #[macro_export]
 macro_rules! d9 {
     ($p:ident) => {
@@ -238,6 +270,7 @@ macro_rules! d9 {
     };
 }
 
+/// CircuitPython pin d13
 #[macro_export]
 macro_rules! d13 {
     ($p:ident) => {
@@ -245,6 +278,7 @@ macro_rules! d13 {
     };
 }
 
+/// CircuitPython pin d14
 #[macro_export]
 macro_rules! d14 {
     ($p:ident) => {
@@ -252,6 +286,7 @@ macro_rules! d14 {
     };
 }
 
+/// CircuitPython pin d15
 #[macro_export]
 macro_rules! d15 {
     ($p:ident) => {
@@ -259,6 +294,8 @@ macro_rules! d15 {
     };
 }
 
+/// Get a reasonable default Embassy NRF config for the Clue.
+/// When using the softdevice be sure to set "softdevice" to true.
 pub fn nrf_default_config(softdevice: bool) -> embassy_nrf::config::Config {
     let mut nrf_config = embassy_nrf::config::Config::default();
     if softdevice {
@@ -268,6 +305,7 @@ pub fn nrf_default_config(softdevice: bool) -> embassy_nrf::config::Config {
     nrf_config
 }
 
+/// Get a reasonable default Embassy NRF softdevice config for the Clue.
 pub fn nrf_softdevice_default_config() -> nrf_softdevice::Config {
     nrf_softdevice::Config {
         clock: Some(nrf_softdevice::raw::nrf_clock_lf_cfg_t {
@@ -314,7 +352,8 @@ pub fn nrf_softdevice_default_config() -> nrf_softdevice::Config {
     }
 }
 
-pub fn tft_spi_config() -> spim::Config {
+/// Get a reasonable config for the SPI attached to the LCD.
+pub fn lcd_spi_config() -> spim::Config {
     let mut spi_config = spim::Config::default();
     spi_config.frequency = spim::Frequency::M32; // M32?
     spi_config.orc = 122;
@@ -322,6 +361,7 @@ pub fn tft_spi_config() -> spim::Config {
     spi_config
 }
 
+/// Get a reasonable config for the TWI attached to the sensors.
 pub fn sensors_twim_config() -> twim::Config {
     let mut twim_config = twim::Config::default();
     twim_config.frequency = twim::Frequency::K400;
@@ -338,71 +378,29 @@ pub const I2C_TEMPPRESSURE: u8 = 0x77;
 pub const ADAFRUIT_COMPANY_UUID: u16 = 0x0822;
 // adafruit base UUID ADAFxxxx-C332-42A8-93BD-25E905756CB8
 
-pub const NUS_SERVICE_UUID: [u8; 16] = [
+pub const NORDIC_UART_SERVICE_UUID: [u8; 16] = [
     0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E,
 ];
-pub const NUS_SERVICE_RX_UUID: [u8; 16] = [
+pub const NORDIC_UART_SERVICE_RX_UUID: [u8; 16] = [
     0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x02, 0x00, 0x40, 0x6E,
 ];
-pub const NUS_SERVICE_TX_UUID: [u8; 16] = [
+pub const NORDIC_UART_SERVICE_TX_UUID: [u8; 16] = [
     0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x03, 0x00, 0x40, 0x6E,
 ];
 // 1 byte for the opcode, 2 bytes for the handle
-pub const NUS_MTU: u16 = nrf_softdevice::raw::BLE_GATT_ATT_MTU_DEFAULT as u16 - 3;
-pub trait NordicUARTRX {
-    fn rx(&self, data: &[u8]) -> ();
-}
+pub const NORDIC_UART_MTU: u16 = nrf_softdevice::raw::BLE_GATT_ATT_MTU_DEFAULT as u16 - 3;
 
-pub struct NordicUARTService<RX: NordicUARTRX> {
-    rx_value_handle: u16,
-    _rx_cccd_handle: u16,
-    tx_value_handle: u16,
-    _tx_cccd_handle: u16,
-    rx_handler: RX,
-}
-
-impl<RX: NordicUARTRX> NordicUARTService<RX> {
-    pub fn new(sd: &mut Softdevice, rx_handler: RX) -> Result<Self, RegisterError> {
-        let service_uuid = Uuid::new_128(&NUS_SERVICE_UUID);
-
-        let mut service_builder = ServiceBuilder::new(sd, service_uuid)?;
-
-        let rx_uuid = Uuid::new_128(&NUS_SERVICE_RX_UUID);
-        let rx_attr = Attribute::new(&[0u8; NUS_MTU as usize]).variable_len(NUS_MTU);
-        let rx_metadata = Metadata::new(Properties::new().write_without_response().write());
-        let rx_characteristic_builder =
-            service_builder.add_characteristic(rx_uuid, rx_attr, rx_metadata)?;
-        let rx_characteristic_handles = rx_characteristic_builder.build();
-
-        let tx_uuid = Uuid::new_128(&NUS_SERVICE_TX_UUID);
-        let tx_attr = Attribute::new(&[0u8; NUS_MTU as usize]).variable_len(NUS_MTU);
-        let tx_metadata = Metadata::new(Properties::new().notify());
-        let tx_characteristic_builder =
-            service_builder.add_characteristic(tx_uuid, tx_attr, tx_metadata)?;
-        let tx_characteristic_handles = tx_characteristic_builder.build();
-
-        let _service_handle = service_builder.build();
-
-        Ok(NordicUARTService {
-            rx_value_handle: rx_characteristic_handles.value_handle,
-            _rx_cccd_handle: rx_characteristic_handles.cccd_handle,
-            tx_value_handle: tx_characteristic_handles.value_handle,
-            _tx_cccd_handle: tx_characteristic_handles.cccd_handle,
-            rx_handler: rx_handler,
-        })
-    }
-
-    pub fn tx_notify(
-        &self,
-        conn: &Connection,
-        buf: &[u8],
-    ) -> Result<(), gatt_server::NotifyValueError> {
-        gatt_server::notify_value(conn, self.tx_value_handle, buf)
-    }
-
-    pub fn on_write(&self, _conn: &Connection, handle: u16, data: &[u8]) {
-        if handle == self.rx_value_handle && !data.is_empty() {
-            self.rx_handler.rx(data);
-        }
-    }
-}
+//pub const ADAFRUIT_TEMPERATURE_SERVICE: &str = "ADAF0100-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_ACCELEROMETER_SERVICE: &str = "ADAF0200-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_LIGHT_SENSOR_SERVICE: &str = "ADAF0300-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_GYROSCOPE_SERVICE: &str = "ADAF0400-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_MAGNETOMETER_SERVICE: &str = "ADAF0500-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_BUTTON_SERVICE: &str = "ADAF0600-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_HUMIDITY_SERVICE: &str = "ADAF0700-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_BAROMETRIC_PRESSURE_SERVICE: &str = "ADAF0800-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_PIXEL_SERVICE: &str = "ADAF0900-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_COLOR_SENSOR_SERVICE: &str = "ADAF0A00-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_MICROPHONE_SERVICE: &str = "ADAF0B00-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_TONE_SERVICE: &str = "ADAF0C00-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_QUATERNION_SERVICE: &str = "ADAF0D00-C332-42A8-93BD-25E905756CB8";
+//pub const ADAFRUIT_PROXIMITY_SERVICE: &str = "ADAF0E00-C332-42A8-93BD-25E905756CB8";
