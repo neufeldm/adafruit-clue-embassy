@@ -9,6 +9,7 @@ use adafruit_clue_embassy::{
 };
 use core::cell::RefCell;
 use core::mem;
+use portable_atomic::AtomicU32;
 
 use embassy_embedded_hal::shared_bus::blocking::i2c::I2cDevice;
 use embassy_executor::Spawner;
@@ -27,19 +28,8 @@ use futures::pin_mut;
 use nrf_softdevice::ble::{gatt_server, peripheral, Connection};
 use nrf_softdevice::{raw, Softdevice};
 
-// accelerometer/Gyro
-use lsm6ds33::Lsm6ds33;
-use lsm6ds33::{AccelerometerBandwidth, AccelerometerOutput, AccelerometerScale};
-use lsm6ds33::{GyroscopeFullScale, GyroscopeOutput};
-
-// proximity/gesture/color
-use apds9960::Apds9960;
-
 // pressure/temperature
 use bmp280_rs;
-
-// magnetometer
-use lis3mdl;
 
 // humidity
 use sht3x;
@@ -55,44 +45,18 @@ async fn softdevice_task(sd: &'static Softdevice) -> ! {
 
 #[derive(Default)]
 struct SensorValues {
-    humid: i16,
-    temp: i16,
-    pressure: i16,
+    humid: f32,
+    temp: f32,
+    pressure: f32,
 }
 
 static SENSOR_VALUES: Signal<ThreadModeRawMutex, SensorValues> = Signal::new();
+static READ_INTERVAL_MS: AtomicU32 = AtomicU32::new(500);
 
 #[embassy_executor::task]
 async fn read_sensors(sensors_twim: Twim<'static, TWISPI1>) {
     // Make a shared TWIM bus for the sensors.
     let sensors_twim_bus = NoopMutex::new(RefCell::new(sensors_twim));
-
-    // Start up the prox/rgb/gesture device - just using the RGB right now.
-    let prox_rgb_gesture_twim = I2cDevice::new(&sensors_twim_bus);
-    let mut prox_rgb_gesture = Apds9960::new(prox_rgb_gesture_twim);
-    prox_rgb_gesture.enable().unwrap();
-    prox_rgb_gesture.enable_light().unwrap();
-
-    // Start up the gyro/accelerometer sensor.
-    let gyro_accel_twim = I2cDevice::new(&sensors_twim_bus);
-    let mut gyro_accel =
-        Lsm6ds33::new(gyro_accel_twim, adafruit_clue_embassy::I2C_GYROACCEL).unwrap();
-    gyro_accel
-        .set_accelerometer_scale(AccelerometerScale::G02)
-        .unwrap();
-    gyro_accel
-        .set_accelerometer_bandwidth(AccelerometerBandwidth::Freq100)
-        .unwrap();
-    gyro_accel
-        .set_accelerometer_output(AccelerometerOutput::Rate104)
-        .unwrap();
-    gyro_accel
-        .set_gyroscope_scale(GyroscopeFullScale::Dps245)
-        .unwrap();
-    gyro_accel
-        .set_gyroscope_output(GyroscopeOutput::Rate104)
-        .unwrap();
-    gyro_accel.set_low_power_mode(false).unwrap();
 
     // Start up the temperature/pressure sensor.
     let temp_pressure_config = bmp280_rs::Config {
@@ -117,79 +81,98 @@ async fn read_sensors(sensors_twim: Twim<'static, TWISPI1>) {
     let humidity_twim = I2cDevice::new(&sensors_twim_bus);
     let mut humidity = sht3x::SHT3x::new(humidity_twim, sht3x::Address::Low);
 
-    let magnet_twim = I2cDevice::new(&sensors_twim_bus);
-    let mut magnet = lis3mdl::Lis3mdl::new(magnet_twim, lis3mdl::Address::Addr1C).unwrap();
-
     let mut humidity_delay = Delay {};
     loop {
         let mut sensor_values = SensorValues::default();
-        // prox/rgb/gesture
-        let _rgb = prox_rgb_gesture.read_light().unwrap();
-
-        // gyro/accel
-        let (_x, _y, _z) = gyro_accel.read_gyro().unwrap();
 
         // temp/pressure
         let temp = temp_pressure
             .read_temperature(&mut temp_pressure_twim)
             .unwrap();
-        sensor_values.temp = temp as i16;
+        sensor_values.temp = temp as f32;
         let pressure = temp_pressure
             .read_pressure(&mut temp_pressure_twim)
             .unwrap();
-        sensor_values.pressure = pressure as i16;
+        sensor_values.pressure = pressure as f32;
 
         // humidity
         let h = humidity
             .measure(sht3x::Repeatability::High, &mut humidity_delay)
             .unwrap();
-        sensor_values.humid = h.humidity as i16;
-
-        // magnetometer
-        let _xyz = magnet.get_mag_axes_mgauss().unwrap();
-
+        sensor_values.humid = h.humidity as f32;
         SENSOR_VALUES.signal(sensor_values);
-        Timer::after(Duration::from_millis(500)).await;
+        // XXX ignoring the measurement period characteristic set on each service for now
+        Timer::after(Duration::from_millis(
+            READ_INTERVAL_MS
+                .load(portable_atomic::Ordering::Relaxed)
+                .into(),
+        ))
+        .await;
     }
 }
 
-#[nrf_softdevice::gatt_service(uuid = "181A")]
-struct EnvironmentalSensingService {
-    #[characteristic(uuid = "2A6D", read, notify)]
-    pressure: i16,
-    #[characteristic(uuid = "2A6E", read, notify)]
-    temperature: i16,
-    #[characteristic(uuid = "2A6F", read, notify)]
-    humidity: i16,
+#[nrf_softdevice::gatt_service(uuid = "ADAF0100-C332-42A8-93BD-25E905756CB8")]
+struct AdafruitTemperatureService {
+    #[characteristic(uuid = "ADAF0001-C332-42A8-93BD-25E905756CB8", read, write)]
+    measurement_period: i32,
+    #[characteristic(uuid = "ADAF0002-C332-42A8-93BD-25E905756CB8", read)]
+    version: u32,
+    #[characteristic(uuid = "ADAF0101-C332-42A8-93BD-25E905756CB8", read, notify)]
+    temperature: f32,
+}
+
+#[nrf_softdevice::gatt_service(uuid = "ADAF0700-C332-42A8-93BD-25E905756CB8")]
+struct AdafruitHumidityService {
+    #[characteristic(uuid = "ADAF0001-C332-42A8-93BD-25E905756CB8", read, write)]
+    measurement_period: i32,
+    #[characteristic(uuid = "ADAF0002-C332-42A8-93BD-25E905756CB8", read)]
+    version: u32,
+    #[characteristic(uuid = "ADAF0701-C332-42A8-93BD-25E905756CB8", read, notify)]
+    humidity: f32,
+}
+
+#[nrf_softdevice::gatt_service(uuid = "ADAF0800-C332-42A8-93BD-25E905756CB8")]
+struct AdafruitBarometricPressureService {
+    #[characteristic(uuid = "ADAF0001-C332-42A8-93BD-25E905756CB8", read, write)]
+    measurement_period: i32,
+    #[characteristic(uuid = "ADAF0002-C332-42A8-93BD-25E905756CB8", read)]
+    version: u32,
+    #[characteristic(uuid = "ADAF0801-C332-42A8-93BD-25E905756CB8", read, notify)]
+    pressure: f32,
 }
 
 #[nrf_softdevice::gatt_server]
 struct Server {
-    env: EnvironmentalSensingService,
+    temp: AdafruitTemperatureService,
+    humid: AdafruitHumidityService,
+    pressure: AdafruitBarometricPressureService,
 }
 
 async fn notify_sensor_readings<'a>(server: &'a Server, connection: &'a Connection) {
     loop {
-        // Try and notify the connected client of the current humidity value.
+        // Try and notify the connected client of the current sensor values.
         let sensor_values = SENSOR_VALUES.wait().await;
-        match server.env.humidity_notify(connection, &sensor_values.humid) {
-            Ok(_) => (),
-            Err(_) => server.env.humidity_set(&sensor_values.humid).unwrap(),
-        };
-        match server
-            .env
+        if let Err(_) = server
+            .temp
             .temperature_notify(connection, &sensor_values.temp)
         {
-            Ok(_) => (),
-            Err(_) => server.env.temperature_set(&sensor_values.temp).unwrap(),
+            server.temp.temperature_set(&sensor_values.temp).unwrap();
         };
-        match server
-            .env
+        if let Err(_) = server
+            .pressure
             .pressure_notify(connection, &sensor_values.pressure)
         {
-            Ok(_) => (),
-            Err(_) => server.env.pressure_set(&sensor_values.pressure).unwrap(),
-        };
+            server
+                .pressure
+                .pressure_set(&sensor_values.pressure)
+                .unwrap();
+        }
+        if let Err(_) = server
+            .humid
+            .humidity_notify(connection, &sensor_values.humid)
+        {
+            server.humid.humidity_set(&sensor_values.humid).unwrap();
+        }
     }
 }
 

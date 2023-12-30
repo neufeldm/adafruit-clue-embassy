@@ -21,10 +21,7 @@ use nrf_softdevice::ble::{gatt_server, peripheral, Connection, Uuid};
 use nrf_softdevice::{raw, Softdevice};
 
 use adafruit_clue_embassy;
-use adafruit_clue_embassy::{
-    lcd_backlight, nrf_default_config, output_pin, red_led,white_led,
-};
-
+use adafruit_clue_embassy::{lcd_backlight, nrf_default_config, output_pin, red_led, white_led};
 
 // 1 byte for the opcode, 2 bytes for the handle
 pub const NUS_MTU: u16 = raw::BLE_GATT_ATT_MTU_DEFAULT as u16 - 3;
@@ -61,8 +58,7 @@ pub struct NordicUARTService {
     _tx_cccd_handle: u16,
 }
 
-impl NordicUARTService
-{
+impl NordicUARTService {
     pub fn new(sd: &mut Softdevice) -> Result<Self, RegisterError> {
         let service_uuid = Uuid::new_128(&NUS_SERVICE_UUID);
 
@@ -108,9 +104,7 @@ struct Server {
 impl Server {
     pub fn new(sd: &mut Softdevice) -> Result<Self, RegisterError> {
         let nus = NordicUARTService::new(sd)?;
-        Ok(Self {
-            nus,
-        })
+        Ok(Self { nus })
     }
 }
 
