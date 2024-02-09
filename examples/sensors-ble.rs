@@ -173,6 +173,18 @@ async fn notify_sensor_readings<'a>(server: &'a Server, connection: &'a Connecti
         {
             server.humid.humidity_set(&sensor_values.humid).unwrap();
         }
+        // Pick the lowest >0 value of the measurement periods set.
+        // This is a little silly - the Adafruit characteristics are
+        // way more fine-grained than we care about here.
+        let mut current_period = READ_INTERVAL_MS.load(portable_atomic::Ordering::Relaxed);
+        let temp_period = server.temp.measurement_period_get().unwrap();
+        let pressure_period = server.pressure.measurement_period_get().unwrap();
+        let humid_period = server.humid.measurement_period_get().unwrap();
+        if temp_period > 0 && temp_period < current_period as i32 { current_period = temp_period as u32; }
+        if pressure_period > 0 && pressure_period < current_period as i32 { current_period = pressure_period as u32; }
+        if humid_period > 0 && humid_period < current_period as i32 { current_period = humid_period as u32; }
+        READ_INTERVAL_MS.store(current_period, portable_atomic::Ordering::Relaxed)
+
     }
 }
 
@@ -214,6 +226,7 @@ async fn main(spawner: Spawner) {
     spawner.spawn(read_sensors(sensors_twim)).unwrap();
 
     //raw::BLE_GAP_AD_TYPE
+    // XXX fix this to use the builders
     #[rustfmt::skip]
     let adv_data = &[
         0x02, raw::BLE_GAP_AD_TYPE_FLAGS as u8, raw::BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE as u8,
@@ -241,6 +254,11 @@ async fn main(spawner: Spawner) {
         white.set_low();
 
         let gatt_fut = gatt_server::run(&conn, &server, |_| {});
+        let period = READ_INTERVAL_MS.load(portable_atomic::Ordering::Relaxed);
+        let period_signed = period as i32;
+        server.temp.measurement_period_set(&period_signed).unwrap();
+        server.humid.measurement_period_set(&period_signed).unwrap();
+        server.pressure.measurement_period_set(&period_signed).unwrap();
         let notify_fut = notify_sensor_readings(&server, &conn);
         pin_mut!(gatt_fut);
         pin_mut!(notify_fut);
