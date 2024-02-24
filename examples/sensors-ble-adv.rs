@@ -38,13 +38,6 @@ async fn softdevice_task(sd: &'static Softdevice) -> ! {
     sd.run().await
 }
 
-#[derive(Default)]
-struct SensorValues {
-    humid: i32,
-    temp: i32,
-    pressure: i32,
-}
-
 static READ_INTERVAL_MS: AtomicU32 = AtomicU32::new(500);
 
 #[embassy_executor::main]
@@ -111,32 +104,37 @@ async fn main(spawner: Spawner) {
     loop {
         red.set_high();
         white.set_low();
-        let mut sensor_values = SensorValues::default();
 
         // temp/pressure
-        sensor_values.temp = temp_pressure
+        let temp = temp_pressure
             .read_temperature(&mut temp_pressure_twim)
             .unwrap();
-        sensor_values.pressure = temp_pressure
+        let pressure = temp_pressure
             .read_pressure(&mut temp_pressure_twim)
             .unwrap();
 
         // humidity
-        sensor_values.humid = humidity
+        let humid = humidity
             .measure(sht3x::Repeatability::High, &mut humidity_delay)
             .unwrap()
             .humidity;
-        let bytes = [b'M', b'J', b'N'];
+        let mut beacon_bytes = [0x00; 14];
+        // Unknown manufacturer in bytes 0 and 1
+        beacon_bytes[0..2].copy_from_slice(&[0xFF; 2]);
+        // Rest of bytes are sensor values, little-endian
+        beacon_bytes[2..6].copy_from_slice(&temp.to_le_bytes());
+        beacon_bytes[6..10].copy_from_slice(&pressure.to_le_bytes());
+        beacon_bytes[10..14].copy_from_slice(&humid.to_le_bytes());
         let adv_data = LegacyAdvertisementBuilder::new()
         .flags(&[Flag::LE_Only])
-        .raw(AdvertisementDataType::MANUFACTURER_SPECIFIC_DATA, &bytes)
+        .raw(AdvertisementDataType::MANUFACTURER_SPECIFIC_DATA, &beacon_bytes)
         .build();
         let adv = peripheral::NonconnectableAdvertisement::NonscannableUndirected {
             adv_data: &adv_data,
         };
         let ble_config = peripheral::Config::default();
         match with_timeout(
-            Duration::from_secs(1),
+            Duration::from_secs(5),
             peripheral::advertise(sd, adv, &ble_config),
         )
         .await
