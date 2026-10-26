@@ -4,24 +4,23 @@
 #![no_std]
 
 mod pins;
-
-use embassy_nrf;
-use embassy_nrf::gpio::{AnyPin, Input, Level, Output, OutputDrive, Pin, Pull};
+use embassy_nrf::Peri;
+use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pin, Pull};
 use embassy_nrf::{spim, twim};
 use nrf_softdevice;
 
 /// Take a raw board pin and turn it into an output.
-pub fn output_pin<'a, P: Pin>(pin: P, high: bool) -> Output<'a, AnyPin> {
+pub fn output_pin<'a>(pin: Peri<'a, impl Pin>, high: bool) -> Output<'a> {
     Output::new(
-        pin.degrade(),
+        pin,
         if high { Level::High } else { Level::Low },
         OutputDrive::Standard,
     )
 }
 
 /// Take a raw board pin and turn it into an input.
-pub fn input_pin<'a, P: Pin>(pin: P, up: bool) -> Input<'a, AnyPin> {
-    Input::new(pin.degrade(), if up { Pull::Up } else { Pull::Down })
+pub fn input_pin<'a>(pin: Peri<'a, impl Pin>, up: bool) -> Input<'a> {
+    Input::new(pin, if up { Pull::Up } else { Pull::Down })
 }
 
 /// Get a reasonable default Embassy NRF config for the Clue.

@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(type_alias_impl_trait)]
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
@@ -14,8 +13,9 @@ use embassy_nrf as _;
 use embassy_nrf::{bind_interrupts, peripherals, spim, twim};
 use embassy_sync::blocking_mutex::NoopMutex;
 use embassy_time::{Delay, Duration, Timer};
+use embedded_hal_bus::spi::ExclusiveDevice;
 
-use display_interface_spi::SPIInterfaceNoCS;
+use mipidsi::{Builder, models, interface::SpiInterface, options::Orientation, options::ColorInversion, options::Rotation};
 
 use embedded_graphics::{
     mono_font::{ascii::FONT_7X13, MonoTextStyle},
@@ -24,8 +24,6 @@ use embedded_graphics::{
     primitives::*,
     text::Text,
 };
-
-use mipidsi::Builder;
 
 // accelerometer/Gyro
 use lsm6ds33::Lsm6ds33;
@@ -48,7 +46,7 @@ use core::fmt::Write;
 use heapless::String;
 
 bind_interrupts!(struct Irqs {
-    SPIM1_SPIS1_TWIM1_TWIS1_SPI1_TWI1 => twim::InterruptHandler<peripherals::TWISPI1>;
+    TWISPI1 => twim::InterruptHandler<peripherals::TWISPI1>;
     SPIM3 => spim::InterruptHandler<peripherals::SPI3>;
 });
 
@@ -59,36 +57,40 @@ async fn main(_spawner: Spawner) {
 
     // Fire up the TFT.
     let mut _lcd_backlight = output_pin(lcd_backlight!(nrf_periph), true);
-    let _lcd_cs_pin = output_pin(lcd_cs!(nrf_periph), false);
+    let lcd_cs_pin = output_pin(lcd_cs!(nrf_periph), false);
     let lcd_spi_config = adafruit_clue_embassy::lcd_spi_config();
-    let lcd_spi = spim::Spim::new_txonly(
+    let lcd_spi_bus = spim::Spim::new_txonly(
         nrf_periph.SPI3,
         Irqs,
         lcd_sck!(nrf_periph),
         lcd_mosi!(nrf_periph),
         lcd_spi_config,
     );
-    let lcd_spi_interface = SPIInterfaceNoCS::new(lcd_spi, output_pin(lcd_dc!(nrf_periph), false));
-    let mut lcd_delay = Delay {};
-    let mut display = Builder::st7789(lcd_spi_interface)
-        .with_display_size(LCD_XSIZE, LCD_YSIZE)
-        .with_orientation(mipidsi::Orientation::LandscapeInverted(true))
-        .with_invert_colors(mipidsi::ColorInversion::Inverted)
-        .init(
-            &mut lcd_delay,
-            Some(output_pin(lcd_reset!(nrf_periph), false)),
-        )
+    let lcd_spi_device_delay = Delay {};
+    let lcd_spi_device = ExclusiveDevice::new(lcd_spi_bus, lcd_cs_pin, lcd_spi_device_delay).expect("Unable to create ExclusiveDevice!");
+    let mut lcd_di_buffer = [0_u8; 128]; 
+    let lcd_display_interface = SpiInterface::new(lcd_spi_device, output_pin(lcd_dc!(nrf_periph),false), &mut lcd_di_buffer);
+
+    let mut lcd_display_delay = Delay {};
+    let mut lcd_display = Builder::new(models::ST7789, lcd_display_interface)
+        .display_size(LCD_XSIZE, LCD_YSIZE)
+        .orientation(Orientation::new().rotate(Rotation::Deg270))
+        .invert_colors(ColorInversion::Inverted)
+        .reset_pin(output_pin(lcd_reset!(nrf_periph), false))
+        .init(&mut lcd_display_delay)
         .unwrap();
-    display.clear(Rgb565::BLACK).unwrap();
+    lcd_display.clear(Rgb565::BLACK).unwrap();
 
     // Make a shared TWIM bus for the sensors.
     let sensors_twim_config = adafruit_clue_embassy::sensors_twim_config();
+    let mut sensors_twim_buffer = [0_u8; 128];
     let sensors_twim = twim::Twim::new(
         nrf_periph.TWISPI1,
         Irqs,
         sensors_i2c_sda!(nrf_periph),
         sensors_i2c_scl!(nrf_periph),
         sensors_twim_config,
+        &mut sensors_twim_buffer
     );
     let sensors_twim_bus = NoopMutex::new(RefCell::new(sensors_twim));
 
@@ -101,7 +103,8 @@ async fn main(_spawner: Spawner) {
     // Start up the gyro/accelerometer sensor.
     let gyro_accel_twim = I2cDevice::new(&sensors_twim_bus);
     let mut gyro_accel =
-        Lsm6ds33::new(gyro_accel_twim, adafruit_clue_embassy::I2C_GYROACCEL).unwrap();
+        Lsm6ds33::new(gyro_accel_twim, adafruit_clue_embassy::I2C_GYROACCEL).unwrap_or_else(|_| {
+        panic!("Failed to initialize LSM6DS33 gyro/accel!") });
     gyro_accel
         .set_accelerometer_scale(AccelerometerScale::G02)
         .unwrap();
@@ -156,15 +159,15 @@ async fn main(_spawner: Spawner) {
             rgb.red, rgb.green, rgb.blue, rgb.clear
         )
         .unwrap();
-        print_text(&mut display, 80, &rgbstring);
+        print_text(&mut lcd_display, 80, &rgbstring);
         let circle_color = Rgb565::new(rgb.red as u8, rgb.green as u8, rgb.blue as u8);
-        draw_circle(&mut display, 0, 35, 40, circle_color);
+        draw_circle(&mut lcd_display, 0, 35, 40, circle_color);
 
         // gyro/accel
         let (x, y, z) = gyro_accel.read_gyro().unwrap();
         let mut gyrostring: String<64> = String::new();
         write!(gyrostring, "GYRO ({:.4},{:.4},{:.4})", x, y, z).unwrap();
-        print_text(&mut display, 100, &gyrostring);
+        print_text(&mut lcd_display, 100, &gyrostring);
 
         // temp/pressure
         let temp = temp_pressure
@@ -175,10 +178,10 @@ async fn main(_spawner: Spawner) {
             .unwrap();
         let mut tempstring: String<64> = String::new();
         write!(tempstring, "TEMP {}", temp).unwrap();
-        print_text(&mut display, 120, &tempstring);
+        print_text(&mut lcd_display, 120, &tempstring);
         let mut pressstring: String<64> = String::new();
         write!(pressstring, "PRESSURE {}", pressure).unwrap();
-        print_text(&mut display, 140, &pressstring);
+        print_text(&mut lcd_display, 140, &pressstring);
 
         // humidity
         let h = humidity
@@ -186,13 +189,13 @@ async fn main(_spawner: Spawner) {
             .unwrap();
         let mut humstring: String<64> = String::new();
         write!(humstring, "HUMID {} TEMP {}", h.humidity, h.temperature).unwrap();
-        print_text(&mut display, 160, &humstring);
+        print_text(&mut lcd_display, 160, &humstring);
 
         // magnetometer
         let xyz = magnet.get_mag_axes_mgauss().unwrap();
         let mut magstring: String<64> = String::new();
         write!(magstring, "MAG ({},{},{})", xyz.x, xyz.y, xyz.z).unwrap();
-        print_text(&mut display, 180, &magstring);
+        print_text(&mut lcd_display, 180, &magstring);
 
         Timer::after(Duration::from_millis(500)).await;
     }
