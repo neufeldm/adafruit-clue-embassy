@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(type_alias_impl_trait)]
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
@@ -10,6 +9,7 @@ use adafruit_clue_embassy::{
 use core::cell::RefCell;
 use core::mem;
 use portable_atomic::AtomicU32;
+use static_cell::StaticCell;
 
 use embassy_embedded_hal::shared_bus::blocking::i2c::I2cDevice;
 use embassy_executor::Spawner;
@@ -35,7 +35,7 @@ use bmp280_rs;
 use sht3x;
 
 bind_interrupts!(struct Irqs {
-    SPIM1_SPIS1_TWIM1_TWIS1_SPI1_TWI1 => twim::InterruptHandler<TWISPI1>;
+    TWISPI1 => twim::InterruptHandler<TWISPI1>;
 });
 
 #[embassy_executor::task]
@@ -52,9 +52,10 @@ struct SensorValues {
 
 static SENSOR_VALUES: Signal<ThreadModeRawMutex, SensorValues> = Signal::new();
 static READ_INTERVAL_MS: AtomicU32 = AtomicU32::new(500);
+static SENSORS_BUFFER: StaticCell<[u8; 128]> = StaticCell::new();
 
 #[embassy_executor::task]
-async fn read_sensors(sensors_twim: Twim<'static, TWISPI1>) {
+async fn read_sensors(sensors_twim: Twim<'static>) {
     // Make a shared TWIM bus for the sensors.
     let sensors_twim_bus = NoopMutex::new(RefCell::new(sensors_twim));
 
@@ -198,8 +199,6 @@ async fn main(spawner: Spawner) {
     output_pin(lcd_backlight!(nrf_periph), false);
 
     let mut sd_config = adafruit_clue_embassy::nrf_softdevice_default_config();
-    let sd = Softdevice::enable(&sd_config);
-
     sd_config.gap_device_name =
         // XXX maybe make a macro for this?
         Some(raw::ble_gap_cfg_device_name_t {
@@ -211,19 +210,22 @@ async fn main(spawner: Spawner) {
                 raw::BLE_GATTS_VLOC_STACK as u8,
             ),
         });
+        let sd = Softdevice::enable(&sd_config);
 
     let server = Server::new(sd).unwrap();
-    spawner.spawn(softdevice_task(sd)).unwrap();
+    spawner.spawn(softdevice_task(sd).unwrap());
 
     let sensors_twim_config = adafruit_clue_embassy::sensors_twim_config();
+    let sensors_twim_buffer: &'static mut [u8; 128] = SENSORS_BUFFER.init([0_u8; 128]);
     let sensors_twim = twim::Twim::new(
         nrf_periph.TWISPI1,
         Irqs,
         sensors_i2c_sda!(nrf_periph),
         sensors_i2c_scl!(nrf_periph),
         sensors_twim_config,
+        sensors_twim_buffer
     );
-    spawner.spawn(read_sensors(sensors_twim)).unwrap();
+    spawner.spawn(read_sensors(sensors_twim).unwrap());
 
     //raw::BLE_GAP_AD_TYPE
     // XXX fix this to use the builders
