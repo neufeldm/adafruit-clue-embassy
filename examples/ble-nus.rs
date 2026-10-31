@@ -1,7 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(type_alias_impl_trait)]
-#![macro_use]
 
 use embassy_nrf as _; // time driver
                       //use embassy_nrf as _; // time driver
@@ -133,8 +131,6 @@ async fn main(spawner: Spawner) {
     output_pin(lcd_backlight!(nrf_periph), false);
 
     let mut sd_config = adafruit_clue_embassy::nrf_softdevice_default_config();
-    let sd = Softdevice::enable(&sd_config);
-
     sd_config.gap_device_name =
         // XXX maybe make a macro for this?
         Some(raw::ble_gap_cfg_device_name_t {
@@ -146,9 +142,10 @@ async fn main(spawner: Spawner) {
                 raw::BLE_GATTS_VLOC_STACK as u8,
             ),
         });
+    let sd = Softdevice::enable(&sd_config);
 
     let server = Server::new(sd).unwrap();
-    spawner.spawn(softdevice_task(sd)).unwrap();
+    spawner.spawn(softdevice_task(sd).unwrap());
 
     //raw::BLE_GAP_AD_TYPE
     #[rustfmt::skip]

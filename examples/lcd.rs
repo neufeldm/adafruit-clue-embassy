@@ -1,17 +1,16 @@
 #![no_std]
 #![no_main]
-#![feature(type_alias_impl_trait)]
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
     lcd_backlight, lcd_cs, lcd_dc, lcd_mosi, lcd_reset, lcd_sck, nrf_default_config, output_pin,
     white_led, LCD_XSIZE, LCD_YSIZE,
 };
-use display_interface_spi::SPIInterfaceNoCS;
 use embassy_executor::Spawner;
 use embassy_nrf as _;
 use embassy_nrf::{bind_interrupts, peripherals, spim};
 use embassy_time::{Delay, Duration, Timer};
+use embedded_hal_bus::spi::ExclusiveDevice;
 
 use embedded_graphics::{
     mono_font::{ascii::FONT_6X10, MonoTextStyle},
@@ -20,7 +19,7 @@ use embedded_graphics::{
     primitives::*,
     text::Text,
 };
-use mipidsi::Builder;
+use mipidsi::{Builder, models, interface::SpiInterface, options::Orientation, options::ColorInversion, options::Rotation};
 
 bind_interrupts!(struct Irqs {
     SPIM3 => spim::InterruptHandler<peripherals::SPI3>;
@@ -31,25 +30,28 @@ async fn main(_spawner: Spawner) {
     let nrf_config = nrf_default_config(false);
     let nrf_periph = embassy_nrf::init(nrf_config);
     let mut _backlight = output_pin(lcd_backlight!(nrf_periph), true);
-    let _cs_pin = output_pin(lcd_cs!(nrf_periph), false);
+    let cs_pin = output_pin(lcd_cs!(nrf_periph), false);
 
     let spi_config = adafruit_clue_embassy::lcd_spi_config();
-    let spi = spim::Spim::new_txonly(
+    let spi_bus = spim::Spim::new_txonly(
         nrf_periph.SPI3,
         Irqs,
         lcd_sck!(nrf_periph),
         lcd_mosi!(nrf_periph),
         spi_config,
     );
+    let spi_device_delay = Delay {};
+    let spi_device = ExclusiveDevice::new(spi_bus, cs_pin, spi_device_delay).expect("Unable to create ExclusiveDevice!");
+    let mut di_buffer = [0_u8; 512]; 
+    let display_interface = SpiInterface::new(spi_device, output_pin(lcd_dc!(nrf_periph),false), &mut di_buffer);
 
-    let di = SPIInterfaceNoCS::new(spi, output_pin(lcd_dc!(nrf_periph), false));
-
-    let mut delay = Delay {};
-    let mut display = Builder::st7789(di)
-        .with_display_size(LCD_XSIZE, LCD_YSIZE)
-        .with_orientation(mipidsi::Orientation::LandscapeInverted(true))
-        .with_invert_colors(mipidsi::ColorInversion::Inverted)
-        .init(&mut delay, Some(output_pin(lcd_reset!(nrf_periph), false)))
+    let mut display_delay = Delay {};
+    let mut display = Builder::new(models::ST7789, display_interface)
+        .display_size(LCD_XSIZE, LCD_YSIZE)
+        .orientation(Orientation::new().rotate(Rotation::Deg270))
+        .invert_colors(ColorInversion::Inverted)
+        .reset_pin(output_pin(lcd_reset!(nrf_periph), false))
+        .init(&mut display_delay)
         .unwrap();
     display.clear(Rgb565::BLACK).unwrap();
     let text_style = MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE);
