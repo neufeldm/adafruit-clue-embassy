@@ -1,6 +1,5 @@
 
 use embassy_nrf::{Peri, Peripherals, bind_interrupts, spim, twim};
-use embassy_nrf::twim::{Config, InterruptHandler, Twim};
 use embassy_nrf::interrupt::typelevel::Binding;
 use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pin, Pull, AnyPin};
 use embassy_nrf::peripherals::{
@@ -26,8 +25,8 @@ use embassy_nrf::peripherals::{
 //    UARTE1,PDM,
 //};
 use embassy_time::Delay;
+use embedded_hal_bus::spi
 use nrf_softdevice;
-//use embedded_hal_bus::spi::ExclusiveDevice;
 use mipidsi;
 
 // Sensor I2C IDs
@@ -250,7 +249,72 @@ impl Board {
         }
         nrf_config
     }
+    pub fn sensors_twim<'a, T>(
+        &mut self,
+        peri: Peri<'a, T>,
+        irq: impl Binding<T::Interrupt, twim::InterruptHandler<T>> + 'a,
+        buf: &'a mut [u8],
+        config: twim::Config,
+    ) -> Option<twim::Twim<'a>>
+    where
+        T: twim::Instance,
+    {
+        if self.pins.sensors_scl.is_none() ||
+           self.pins.sensors_sda.is_none()
+        {
+            return None;
+        }
+        Some(twim::Twim::new(peri, irq, self.pins.sensors_sda.take()?, self.pins.sensors_scl.take()?, config, buf))
+    }
 
+    pub fn sensors_twim_default_config<'a, T>(
+        &mut self,
+        peri: Peri<'a, T>,
+        irq: impl Binding<T::Interrupt, twim::InterruptHandler<T>> + 'a,
+        buf: &'a mut [u8],
+    ) -> Option<twim::Twim<'a>>
+    where
+        T: twim::Instance,
+    {
+        self.sensors_twim(peri, irq, buf, crate::sensors_twim_config())
+    }
+
+    pub fn sensors_twim_default<'a>(
+        &mut self,
+        irq: impl Binding<<embassy_nrf::peripherals::TWISPI0 as embassy_nrf::spim::Instance>::Interrupt, InterruptHandler<TWISPI0>> + 'a,
+        buf: &'a mut [u8],
+    )-> Option<twim::Twim<'a>> {
+        let spi = self.serial.twispi0.take()?;
+        self.sensors_twim_default_config(spi, irq, buf)
+    }
+
+    pub fn tft_spi_bus<'a, T>(
+        &mut self,
+        peri: Peri<'a, T>,
+        irq: impl Binding<T::Interrupt, spim::InterruptHandler<T>> + 'a,
+        config: spim::Config,
+    ) -> Option<spim::Spim<'a>>
+    where
+        T: spim::Instance,
+    {
+        if self.pins.tft_sck.is_none() ||
+           self.pins.tft_mosi.is_none()
+        {
+            return None;
+        }
+        Some(spim::Spim::new_txonly(
+            peri,
+            irq,
+            self.pins.tft_sck.take()?,
+            self.pins.tft_mosi.take()?,
+            config,
+        ))
+    }
+    pub fn tft_spi_interface<'a>(&mut self, spi_bus: spim::Spim<'a>) -> Option<spi::ExclusiveDevice<spim::Spim<'a>,Output<'a>,Delay>> {
+        let tft_dc = self.pins.tft_dc.take()?;
+        let tft_dc_output = Output::new(tft_dc,Level::Low,OutputDrive::Standard);
+        spi::ExclusiveDevice::new(spi_bus,tft_dc_output,Delay{}).ok()
+    }
 }
 
 pub struct PPI (
