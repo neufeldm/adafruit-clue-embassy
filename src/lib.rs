@@ -78,24 +78,14 @@ pub fn nrf_softdevice_default_config() -> nrf_softdevice::Config {
     }
 }
 
-// Sensor I2C IDs
-pub const I2C_GYROACCEL: u8 = 0x6A;
-pub const I2C_MAGNETOMETER: u8 = 0x1c;
-pub const I2C_GESTURE: u8 = 0x39;
-pub const I2C_HUMIDITY: u8 = 0x44;
-pub const I2C_TEMPPRESSURE: u8 = 0x77;
-
-pub const LCD_XSIZE: u16 = 240;
-pub const LCD_YSIZE: u16 = 240;
-
 /// Get a reasonable config for the TWI attached to the sensors.
 pub fn sensors_twim_config() -> twim::Config {
     let mut twim_config = twim::Config::default();
     twim_config.frequency = twim::Frequency::K400;
     twim_config
 }
-/// Get a reasonable config for the SPI attached to the LCD.
-pub fn lcd_spi_config() -> spim::Config {
+/// Get a reasonable config for the SPI attached to the TFT.
+pub fn tft_spi_config() -> spim::Config {
     let mut spi_config = spim::Config::default();
     spi_config.frequency = spim::Frequency::M32; // M32?
     spi_config.orc = 122;

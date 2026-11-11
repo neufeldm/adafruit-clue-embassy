@@ -19,7 +19,7 @@ use nrf_softdevice::ble::{gatt_server, peripheral, Connection, Uuid};
 use nrf_softdevice::{raw, Softdevice};
 
 use adafruit_clue_embassy;
-use adafruit_clue_embassy::{lcd_backlight, embassy_nrf_default_config, pins::output_pin, red_led, white_led};
+use adafruit_clue_embassy::{tft_backlight, embassy_nrf_default_config, pins::output_pin, red_led, white_leds};
 
 // 1 byte for the opcode, 2 bytes for the handle
 pub const NUS_MTU: u16 = raw::BLE_GATT_ATT_MTU_DEFAULT as u16 - 3;
@@ -125,10 +125,10 @@ impl gatt_server::Server for Server {
 async fn main(spawner: Spawner) {
     let nrf_config = embassy_nrf_default_config(true);
     let nrf_periph = embassy_nrf::init(nrf_config);
-    let mut white = output_pin(white_led!(nrf_periph), false);
+    let mut white = output_pin(white_leds!(nrf_periph), false);
     let mut red = output_pin(red_led!(nrf_periph), false);
     // Turn off the LCD backlight since we aren't using it.
-    output_pin(lcd_backlight!(nrf_periph), false);
+    output_pin(tft_backlight!(nrf_periph), false);
 
     let mut sd_config = adafruit_clue_embassy::nrf_softdevice_default_config();
     sd_config.gap_device_name =

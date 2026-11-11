@@ -3,8 +3,8 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    lcd_backlight, lcd_cs, lcd_dc, lcd_mosi, lcd_reset, lcd_sck, embassy_nrf_default_config, pins::output_pin,
-    white_led, LCD_XSIZE, LCD_YSIZE,
+    tft_backlight, tft_cs, tft_dc, tft_mosi, tft_reset, tft_sck, embassy_nrf_default_config, pins::output_pin,
+    white_leds, board::TFT_XSIZE, board::TFT_YSIZE,
 };
 use embassy_executor::Spawner;
 use embassy_nrf as _;
@@ -29,28 +29,28 @@ bind_interrupts!(struct Irqs {
 async fn main(_spawner: Spawner) {
     let nrf_config = embassy_nrf_default_config(false);
     let nrf_periph = embassy_nrf::init(nrf_config);
-    let mut _backlight = output_pin(lcd_backlight!(nrf_periph), true);
-    let cs_pin = output_pin(lcd_cs!(nrf_periph), false);
+    let mut _backlight = output_pin(tft_backlight!(nrf_periph), true);
+    let cs_pin = output_pin(tft_cs!(nrf_periph), false);
 
-    let spi_config = adafruit_clue_embassy::lcd_spi_config();
+    let spi_config = adafruit_clue_embassy::tft_spi_config();
     let spi_bus = spim::Spim::new_txonly(
         nrf_periph.SPI3,
         Irqs,
-        lcd_sck!(nrf_periph),
-        lcd_mosi!(nrf_periph),
+        tft_sck!(nrf_periph),
+        tft_mosi!(nrf_periph),
         spi_config,
     );
     let spi_device_delay = Delay {};
     let spi_device = ExclusiveDevice::new(spi_bus, cs_pin, spi_device_delay).expect("Unable to create ExclusiveDevice!");
     let mut di_buffer = [0_u8; 512]; 
-    let display_interface = SpiInterface::new(spi_device, output_pin(lcd_dc!(nrf_periph),false), &mut di_buffer);
+    let display_interface = SpiInterface::new(spi_device, output_pin(tft_dc!(nrf_periph),false), &mut di_buffer);
 
     let mut display_delay = Delay {};
     let mut display = Builder::new(models::ST7789, display_interface)
-        .display_size(LCD_XSIZE, LCD_YSIZE)
+        .display_size(TFT_XSIZE, TFT_YSIZE)
         .orientation(Orientation::new().rotate(Rotation::Deg270))
         .invert_colors(ColorInversion::Inverted)
-        .reset_pin(output_pin(lcd_reset!(nrf_periph), false))
+        .reset_pin(output_pin(tft_reset!(nrf_periph), false))
         .init(&mut display_delay)
         .unwrap();
     display.clear(Rgb565::BLACK).unwrap();
@@ -62,7 +62,7 @@ async fn main(_spawner: Spawner) {
         Circle::new(Point::new(x, y), 64).into_styled(PrimitiveStyle::with_fill(color))
     };
     let mut circle_colors = [Rgb565::RED, Rgb565::GREEN, Rgb565::BLUE, Rgb565::WHITE];
-    let mut led = output_pin(white_led!(nrf_periph), false);
+    let mut led = output_pin(white_leds!(nrf_periph), false);
     loop {
         make_circle(128, 64, circle_colors[0])
             .draw(&mut display)

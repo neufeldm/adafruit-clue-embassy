@@ -3,8 +3,8 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    lcd_backlight, embassy_nrf_default_config, pins::output_pin, red_led, sensors_i2c_scl, sensors_i2c_sda,
-    white_led,
+    tft_backlight, embassy_nrf_default_config, pins::output_pin, red_led, sensors_i2c_scl, sensors_i2c_sda,
+    white_leds,
 };
 use core::cell::RefCell;
 use core::mem;
@@ -45,10 +45,10 @@ static SENSORS_BUFFER: StaticCell<[u8; 128]> = StaticCell::new();
 async fn main(spawner: Spawner) {
     let nrf_config = embassy_nrf_default_config(true);
     let nrf_periph = embassy_nrf::init(nrf_config);
-    let mut white = output_pin(white_led!(nrf_periph), false);
+    let mut white = output_pin(white_leds!(nrf_periph), false);
     let mut red = output_pin(red_led!(nrf_periph), false);
     // Turn off the LCD backlight since we aren't using it.
-    output_pin(lcd_backlight!(nrf_periph), false);
+    output_pin(tft_backlight!(nrf_periph), false);
 
     let mut sd_config = adafruit_clue_embassy::nrf_softdevice_default_config();
     sd_config.gap_device_name =

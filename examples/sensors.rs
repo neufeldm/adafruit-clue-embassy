@@ -3,8 +3,9 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    lcd_backlight, lcd_cs, lcd_dc, lcd_mosi, lcd_reset, lcd_sck, embassy_nrf_default_config, pins::output_pin,
-    sensors_i2c_scl, sensors_i2c_sda, LCD_XSIZE, LCD_YSIZE,
+    tft_backlight, tft_cs, tft_dc, tft_mosi, tft_reset, tft_sck, embassy_nrf_default_config, pins::output_pin,
+    sensors_i2c_scl, sensors_i2c_sda, board::TFT_XSIZE, board::TFT_YSIZE,
+    board::I2C_GYROACCEL,
 };
 use core::cell::RefCell;
 use embassy_embedded_hal::shared_bus::blocking::i2c::I2cDevice;
@@ -56,27 +57,27 @@ async fn main(_spawner: Spawner) {
     let nrf_periph = embassy_nrf::init(nrf_config);
 
     // Fire up the TFT.
-    let mut _lcd_backlight = output_pin(lcd_backlight!(nrf_periph), true);
-    let lcd_cs_pin = output_pin(lcd_cs!(nrf_periph), false);
-    let lcd_spi_config = adafruit_clue_embassy::lcd_spi_config();
+    let mut _lcd_backlight = output_pin(tft_backlight!(nrf_periph), true);
+    let lcd_cs_pin = output_pin(tft_cs!(nrf_periph), false);
+    let lcd_spi_config = adafruit_clue_embassy::tft_spi_config();
     let lcd_spi_bus = spim::Spim::new_txonly(
         nrf_periph.SPI3,
         Irqs,
-        lcd_sck!(nrf_periph),
-        lcd_mosi!(nrf_periph),
+        tft_sck!(nrf_periph),
+        tft_mosi!(nrf_periph),
         lcd_spi_config,
     );
     let lcd_spi_device_delay = Delay {};
     let lcd_spi_device = ExclusiveDevice::new(lcd_spi_bus, lcd_cs_pin, lcd_spi_device_delay).expect("Unable to create ExclusiveDevice!");
     let mut lcd_di_buffer = [0_u8; 128]; 
-    let lcd_display_interface = SpiInterface::new(lcd_spi_device, output_pin(lcd_dc!(nrf_periph),false), &mut lcd_di_buffer);
+    let lcd_display_interface = SpiInterface::new(lcd_spi_device, output_pin(tft_dc!(nrf_periph),false), &mut lcd_di_buffer);
 
     let mut lcd_display_delay = Delay {};
     let mut lcd_display = Builder::new(models::ST7789, lcd_display_interface)
-        .display_size(LCD_XSIZE, LCD_YSIZE)
+        .display_size(TFT_XSIZE, TFT_YSIZE)
         .orientation(Orientation::new().rotate(Rotation::Deg270))
         .invert_colors(ColorInversion::Inverted)
-        .reset_pin(output_pin(lcd_reset!(nrf_periph), false))
+        .reset_pin(output_pin(tft_reset!(nrf_periph), false))
         .init(&mut lcd_display_delay)
         .unwrap();
     lcd_display.clear(Rgb565::BLACK).unwrap();
@@ -103,7 +104,7 @@ async fn main(_spawner: Spawner) {
     // Start up the gyro/accelerometer sensor.
     let gyro_accel_twim = I2cDevice::new(&sensors_twim_bus);
     let mut gyro_accel =
-        Lsm6ds33::new(gyro_accel_twim, adafruit_clue_embassy::I2C_GYROACCEL).unwrap_or_else(|_| {
+        Lsm6ds33::new(gyro_accel_twim, I2C_GYROACCEL).unwrap_or_else(|_| {
         panic!("Failed to initialize LSM6DS33 gyro/accel!") });
     gyro_accel
         .set_accelerometer_scale(AccelerometerScale::G02)

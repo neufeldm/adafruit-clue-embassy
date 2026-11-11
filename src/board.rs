@@ -1,9 +1,7 @@
 
 use embassy_nrf::{Peri, Peripherals, spim, twim};
-use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pin, Pull};
+use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pin, Pull, AnyPin};
 use embassy_nrf::peripherals::{
-    P0_00, P0_01, P0_02, P0_03, P0_04, P0_05, P0_06, P0_07, P0_08, P0_09, P0_10, P0_11, P0_12, P0_13, P0_14, P0_15, P0_16, P0_17, P0_19, P0_20, P0_21, P0_22, P0_23, P0_24, P0_25, P0_26, P0_27, P0_28, P0_29, P0_30, P0_31,
-    P1_00, P1_01, P1_02, P1_03, P1_04, P1_05, P1_06, P1_07, P1_08, P1_09, P1_10, P1_11, P1_12, P1_13, P1_14, P1_15,
     TWISPI0, TWISPI1,
     SPI2, SPI3,
     PDM,
@@ -26,7 +24,7 @@ use embassy_nrf::peripherals::{
 use embassy_time::Delay;
 use nrf_softdevice;
 use crate::pins::{input_pin, output_pin};
-use embedded_hal_bus::spi::ExclusiveDevice;
+//use embedded_hal_bus::spi::ExclusiveDevice;
 use mipidsi;
 
 // Sensor I2C IDs
@@ -36,93 +34,105 @@ pub const I2C_GESTURE: u8 = 0x39;
 pub const I2C_HUMIDITY: u8 = 0x44;
 pub const I2C_TEMPPRESSURE: u8 = 0x77;
 
-pub const LCD_XSIZE: u16 = 240;
-pub const LCD_YSIZE: u16 = 240;
+pub const TFT_XSIZE: u16 = 240;
+pub const TFT_YSIZE: u16 = 240;
 
 pub type Button = Input<'static>;
 pub type LED = Output<'static>;
+pub type Periph<P> = Peri<'static, P>;
+pub type OptPeriph<P> = Option<Periph<P>>;
 
+
+pub struct TFTPeripherals {
+    pub twispi: Periph<TWISPI0>,
+    pub sck: AnyPin,
+    pub mosi: AnyPin,
+    pub cs: AnyPin,
+    pub dc: AnyPin,
+    pub reset: AnyPin,
+    pub backlight: AnyPin,
+}
 
 // XXX going to split this into the arduino pin IDs
 // XXX and devices for our structs, then can provide
 // XXX convenience accessors for the circutpython
 // XXX names, and methods that scoop the correct
 // XXX pins/devices together to build wrappers
-pub type OptPeriph<P> = Option<Peri<'static, P>>;
+
 pub struct Pins {
     // A2 HS AIN2
-    p0: OptPeriph<P0_04>,
+    pub p0: Option<AnyPin>,
     // A3 HS AIN3
-    p1: OptPeriph<P0_05>,
+    pub p1: Option<AnyPin>,
     // A4 LS AIN1
-    p2: OptPeriph<P0_03>,
+    pub p2: Option<AnyPin>,
     // A5 LS AIN4
-    p3: OptPeriph<P0_28>,
+    pub p3: Option<AnyPin>,
     // A6 LS AIN0
-    p4: OptPeriph<P0_02>,
-    // BUTTON_A LS (D5)
-    p5: OptPeriph<P1_02>,
+    pub p4: Option<AnyPin>,
+    // BUTTON_A LS (D5) p5
+    pub button_a: Option<AnyPin>,
     // D6 HS
-    p6: OptPeriph<P1_09>,
+    pub p6: Option<AnyPin>,
     // D7 HS
-    p7: OptPeriph<P0_07>,
+    pub p7: Option<AnyPin>,
     // D8 LS
-    p8: OptPeriph<P1_07>,
+    pub p8: Option<AnyPin>,
     // D9 HS
-    p9: OptPeriph<P0_27>,
+    pub p9: Option<AnyPin>,
     // A7 LS AIN6
-    p10: OptPeriph<P0_30>,
-    // BUTTON_B LS (D11)
-    p11: OptPeriph<P1_10>,
+    pub p10: Option<AnyPin>,
+    // BUTTON_B LS (D11) p11
+    pub button_b: Option<AnyPin>,
     // A0 LS AIN7
-    p12: OptPeriph<P0_31>,
+    pub p12: Option<AnyPin>,
     // SCK HS (D13?)
-    p13: OptPeriph<P0_08>,
+    pub p13: Option<AnyPin>,
     // MISO HS (D14?)
-    p14: OptPeriph<P0_06>,
+    pub p14: Option<AnyPin>,
     // MOSI HS (D15?)
-    p15: OptPeriph<P0_26>,
+    pub p15: Option<AnyPin>,
     // A1 LS AIN5
-    p16: OptPeriph<P0_29>,
-    // L LS (red LED)
-    p17: OptPeriph<P1_01>,
-    // NEOPIXEL HS (D18)
-    p18: OptPeriph<P0_16>,
-    // SCL HS (sensors I2C)
-    p19: OptPeriph<P0_25>,
+    pub p16: Option<AnyPin>,
+    // L LS (red LED) p17
+    pub red_led: Option<AnyPin>,
+    // NEOPIXEL HS (D18) p18
+    pub neopixel: Option<AnyPin>,
+    // SCL HS (sensors I2C) p19
+    pub sensors_i2c_scl: Option<AnyPin>,
     // SDA HS (sensors I2C)
-    p20: OptPeriph<P0_24>,
-    // TFT_SCK HS
-    p29: OptPeriph<P0_14>,
-    // TFT_MOSI HS
-    p30: OptPeriph<P0_15>,
-    // TFT_CS HS
-    p31: OptPeriph<P0_12>,
-    // TFT_DC HS
-    p32: OptPeriph<P0_13>,
-    // TFT_RESET LS
-    p33: OptPeriph<P1_03>,
-    // TFT_BACKLIGHT LS
-    p34: OptPeriph<P1_05>,
-    // MICROPHONE_DATA HS XL1
-    p35: OptPeriph<P0_00>,
-    // MICROPHONE_CLOCK HS XL2
-    p36: OptPeriph<P0_01>,
-    // WHITE_LEDS LS NFC2
-    p43: OptPeriph<P0_10>,
-    // PROXIMITY_LIGHT_INTERRUPT LS NFC1
-    p44: OptPeriph<P0_09>,
-    // ACCELEROMETER_GYRO_INTERRUPT LS
-    p45: OptPeriph<P1_06>,
-    // SPEAKER QPSI
-    p46: OptPeriph<P1_00>,
+    pub sensors_i2c_sda: Option<AnyPin>,
+    // TFT_SCK HS p29
+    pub tft_sck: Option<AnyPin>,
+    // TFT_MOSI HS p30
+    pub tft_mosi: Option<AnyPin>,
+    // TFT_CS HS p31
+    pub tft_cs: Option<AnyPin>,
+    // TFT_DC HS p32
+    pub tft_dc: Option<AnyPin>,
+    // TFT_RESET LS p33
+    pub tft_reset: Option<AnyPin>,
+    // TFT_BACKLIGHT LS p34
+    pub tft_backlight: Option<AnyPin>,
+    // MICROPHONE_DATA HS XL1 p35
+    pub microphone_data: Option<AnyPin>,
+    // MICROPHONE_CLOCK HS XL2 p36
+    pub microphone_clock: Option<AnyPin>,
+    // WHITE_LEDS LS NFC2 p43
+    pub white_leds: Option<AnyPin>,
+    // PROXIMITY_LIGHT_INTERRUPT LS NFC1 p44
+    pub proximity_light_interrupt: Option<AnyPin>,
+    // ACCELEROMETER_GYRO_INTERRUPT LS p45
+    pub accelerometer_gyro_interrupt: Option<AnyPin>,
+    // SPEAKER QSPI p46
+    pub speaker: Option<AnyPin>,
 }
 
 pub struct PWM(
-    OptPeriph<PWM0>,
-    OptPeriph<PWM1>,
-    OptPeriph<PWM2>,
-    OptPeriph<PWM3>,
+    pub OptPeriph<PWM0>,
+    pub OptPeriph<PWM1>,
+    pub OptPeriph<PWM2>,
+    pub OptPeriph<PWM3>,
 );
 
 pub struct Serial {
@@ -133,45 +143,45 @@ pub struct Serial {
 }
 
 pub struct UARTE(
-    OptPeriph<UARTE0>,
-    OptPeriph<UARTE1>,
+    pub OptPeriph<UARTE0>,
+    pub OptPeriph<UARTE1>,
 );
 
 pub struct Timers(
-    OptPeriph<TIMER0>,
-    OptPeriph<TIMER1>,
-    OptPeriph<TIMER2>,
-    OptPeriph<TIMER3>,
-    OptPeriph<TIMER4>,
+    pub OptPeriph<TIMER0>,
+    pub OptPeriph<TIMER1>,
+    pub OptPeriph<TIMER2>,
+    pub OptPeriph<TIMER3>,
+    pub OptPeriph<TIMER4>,
 );
 
 pub struct GPIOTE(
-    OptPeriph<GPIOTE_CH0>,
-    OptPeriph<GPIOTE_CH1>,
-    OptPeriph<GPIOTE_CH3>,
-    OptPeriph<GPIOTE_CH4>,
-    OptPeriph<GPIOTE_CH5>,
-    OptPeriph<GPIOTE_CH6>,
-    OptPeriph<GPIOTE_CH7>,
+    pub OptPeriph<GPIOTE_CH0>,
+    pub OptPeriph<GPIOTE_CH1>,
+    pub OptPeriph<GPIOTE_CH3>,
+    pub OptPeriph<GPIOTE_CH4>,
+    pub OptPeriph<GPIOTE_CH5>,
+    pub OptPeriph<GPIOTE_CH6>,
+    pub OptPeriph<GPIOTE_CH7>,
 );
 
 pub struct Board {
-    pins: Pins,
-    serial: Serial,
-    uarte: UARTE,
-    pwm: PWM,
-    timers: Timers,
-    pdm: OptPeriph<PDM>,
-    usbd: OptPeriph<USBD>,
-    gpiote: GPIOTE,
-    ppi: PPI,
-    ppi_group: PPIGroup,
-    nvmc: OptPeriph<NVMC>,
+    pub pins: Pins,
+    pub serial: Serial,
+    pub uarte: UARTE,
+    pub pwm: PWM,
+    pub timers: Timers,
+    pub pdm: OptPeriph<PDM>,
+    pub usbd: OptPeriph<USBD>,
+    pub gpiote: GPIOTE,
+    pub ppi: PPI,
+    pub ppi_group: PPIGroup,
+    pub nvmc: OptPeriph<NVMC>,
 }
 
 macro_rules! opt_pin {
     ($pin:ident, $periph:ident) => {
-        Some(crate::$pin!($periph))
+        Some((*crate::$pin!($periph)).into())
     }
 }
 macro_rules! opt_ppi {
@@ -191,34 +201,34 @@ impl Board {
                 p2: opt_pin!(p2, p),
                 p3: opt_pin!(p3, p),
                 p4: opt_pin!(p4, p),
-                p5: opt_pin!(p5, p),
+                button_a: opt_pin!(button_a, p),
                 p6: opt_pin!(p6, p),
                 p7: opt_pin!(p7, p),
                 p8: opt_pin!(p8, p),
                 p9: opt_pin!(p9, p),
                 p10: opt_pin!(p10, p),
-                p11: opt_pin!(p11, p),
+                button_b: opt_pin!(button_b, p),
                 p12: opt_pin!(p12, p),
                 p13: opt_pin!(p13, p),
                 p14: opt_pin!(p14, p),
                 p15: opt_pin!(p15, p),
                 p16: opt_pin!(p16, p),
-                p17: opt_pin!(p17, p),
-                p18: opt_pin!(p18, p),
-                p19: opt_pin!(p19, p),
-                p20: opt_pin!(p20, p),
-                p29: opt_pin!(p29, p),
-                p30: opt_pin!(p30, p),
-                p31: opt_pin!(p31, p),
-                p32: opt_pin!(p32, p),
-                p33: opt_pin!(p33, p),
-                p34: opt_pin!(p34, p),
-                p35: opt_pin!(p35, p),
-                p36: opt_pin!(p36, p),
-                p43: opt_pin!(p43, p),
-                p44: opt_pin!(p44, p),
-                p45: opt_pin!(p45, p),
-                p46: opt_pin!(p46, p),
+                red_led: opt_pin!(red_led, p),
+                neopixel: opt_pin!(neopixel, p),
+                sensors_i2c_scl: opt_pin!(sensors_i2c_scl, p),
+                sensors_i2c_sda: opt_pin!(sensors_i2c_sda, p),
+                tft_sck: opt_pin!(tft_sck, p),
+                tft_mosi: opt_pin!(tft_mosi, p),
+                tft_cs: opt_pin!(tft_cs, p),
+                tft_dc: opt_pin!(tft_dc, p),
+                tft_reset: opt_pin!(tft_reset, p),
+                tft_backlight: opt_pin!(tft_backlight, p),
+                microphone_data: opt_pin!(microphone_data, p),
+                microphone_clock: opt_pin!(microphone_clock, p),
+                white_leds: opt_pin!(white_leds, p),
+                proximity_light_interrupt: opt_pin!(proximity_light_interrupt, p),
+                accelerometer_gyro_interrupt: opt_pin!(accelerometer_gyro_interrupt, p),
+                speaker: opt_pin!(speaker, p),
             },
             serial: Serial {
                 twispi0: Some(p.TWISPI0),
@@ -254,14 +264,34 @@ impl Board {
         }
         nrf_config
     }
+    pub fn get_tft_peripherals(&mut self) -> Option<TFTPeripherals> {
+        if self.serial.twispi0.is_none() ||
+           self.pins.tft_sck.is_none() ||
+           self.pins.tft_mosi.is_none() ||
+           self.pins.tft_cs.is_none() ||
+           self.pins.tft_dc.is_none() ||
+           self.pins.tft_reset.is_none() ||
+           self.pins.tft_backlight.is_none() {
+            return None;
+        }
+        Some(TFTPeripherals {
+            twispi: self.serial.twispi0.take()?,
+            sck: self.pins.tft_sck.take()?,
+            mosi: self.pins.tft_mosi.take()?,
+            cs: self.pins.tft_cs.take()?,
+            dc: self.pins.tft_dc.take()?,
+            reset: self.pins.tft_reset.take()?,
+            backlight: self.pins.tft_backlight.take()?,
+        })
+    }
 
 }
 
 pub struct PPI (
-    OptPeriph<PPI_CH0>, OptPeriph<PPI_CH1>, OptPeriph<PPI_CH2>, OptPeriph<PPI_CH3>, OptPeriph<PPI_CH4>, OptPeriph<PPI_CH5>, OptPeriph<PPI_CH6>, OptPeriph<PPI_CH7>, OptPeriph<PPI_CH8>, OptPeriph<PPI_CH9>, OptPeriph<PPI_CH10>, OptPeriph<PPI_CH11>, OptPeriph<PPI_CH12>, OptPeriph<PPI_CH13>, OptPeriph<PPI_CH14>, OptPeriph<PPI_CH15>,
-    OptPeriph<PPI_CH16>, OptPeriph<PPI_CH17>, OptPeriph<PPI_CH18>, OptPeriph<PPI_CH19>, OptPeriph<PPI_CH20>, OptPeriph<PPI_CH21>, OptPeriph<PPI_CH22>, OptPeriph<PPI_CH23>, OptPeriph<PPI_CH24>, OptPeriph<PPI_CH25>, OptPeriph<PPI_CH26>, OptPeriph<PPI_CH27>, OptPeriph<PPI_CH28>, OptPeriph<PPI_CH29>, OptPeriph<PPI_CH30>, OptPeriph<PPI_CH31>,
+    pub OptPeriph<PPI_CH0>, pub OptPeriph<PPI_CH1>, pub OptPeriph<PPI_CH2>, pub OptPeriph<PPI_CH3>, pub OptPeriph<PPI_CH4>, pub OptPeriph<PPI_CH5>, pub OptPeriph<PPI_CH6>, pub OptPeriph<PPI_CH7>, pub OptPeriph<PPI_CH8>, pub OptPeriph<PPI_CH9>, pub OptPeriph<PPI_CH10>, pub OptPeriph<PPI_CH11>, pub OptPeriph<PPI_CH12>, pub OptPeriph<PPI_CH13>, pub OptPeriph<PPI_CH14>, pub OptPeriph<PPI_CH15>,
+    pub OptPeriph<PPI_CH16>, pub OptPeriph<PPI_CH17>, pub OptPeriph<PPI_CH18>, pub OptPeriph<PPI_CH19>, pub OptPeriph<PPI_CH20>, pub OptPeriph<PPI_CH21>, pub OptPeriph<PPI_CH22>, pub OptPeriph<PPI_CH23>, pub OptPeriph<PPI_CH24>, pub OptPeriph<PPI_CH25>, pub OptPeriph<PPI_CH26>, pub OptPeriph<PPI_CH27>, pub OptPeriph<PPI_CH28>, pub OptPeriph<PPI_CH29>, pub OptPeriph<PPI_CH30>, pub OptPeriph<PPI_CH31>,
 );
 
 pub struct PPIGroup (
-    OptPeriph<PPI_GROUP0>, OptPeriph<PPI_GROUP1>, OptPeriph<PPI_GROUP2>, OptPeriph<PPI_GROUP3>, OptPeriph<PPI_GROUP4>, OptPeriph<PPI_GROUP5>,
+    pub OptPeriph<PPI_GROUP0>, pub OptPeriph<PPI_GROUP1>, pub OptPeriph<PPI_GROUP2>, pub OptPeriph<PPI_GROUP3>, pub OptPeriph<PPI_GROUP4>, pub OptPeriph<PPI_GROUP5>,
 );

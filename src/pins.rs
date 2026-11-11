@@ -71,6 +71,13 @@ macro_rules! p5 {
     };
 }
 
+#[macro_export]
+macro_rules! button_a {
+    ($p:ident) => {
+        $crate::p5!($p)
+    }
+}
+
 // D6 HS
 #[macro_export]
 macro_rules! p6 {
@@ -119,6 +126,14 @@ macro_rules! p11 {
         $p.P1_10
     };
 }
+
+#[macro_export]
+macro_rules! button_b {
+    ($p:ident) => {
+        $crate::p11!($p)
+    }
+}
+
 
 // A0 LS AIN7
 #[macro_export]
@@ -169,6 +184,13 @@ macro_rules! p17 {
     };
 }
 
+#[macro_export]
+macro_rules! red_led {
+    ($p:ident) => {
+        $crate::p17!($p)
+    }
+}
+
 // NEOPIXEL HS
 // this is also arduino D18
 #[macro_export]
@@ -176,6 +198,13 @@ macro_rules! p18 {
     ($p:ident) => {
         $p.P0_16
     };
+}
+
+#[macro_export]
+macro_rules! neopixel {
+    ($p:ident) => {
+        $crate::p18!($p)
+    }
 }
 
 // SCL HS
@@ -187,6 +216,13 @@ macro_rules! p19 {
     };
 }
 
+#[macro_export]
+macro_rules! sensors_i2c_scl {
+    ($p:ident) => {
+        $crate::p19!($p)
+    }
+}
+
 // SDA HS
 // sensors I2C
 #[macro_export]
@@ -194,6 +230,13 @@ macro_rules! p20 {
     ($p:ident) => {
         $p.P0_24
     };
+}
+
+#[macro_export]
+macro_rules! sensors_i2c_sda {
+    ($p:ident) => {
+        $crate::p20!($p)
+    }
 }
 
 // TFT_SCK HS
@@ -204,12 +247,27 @@ macro_rules! p29 {
     };
 }
 
+#[macro_export]
+macro_rules! tft_sck {
+    ($p:ident) => {
+        $crate::p29!($p)
+    }
+}
+
+
 // TFT_MOSI HS
 #[macro_export]
 macro_rules! p30 {
     ($p:ident) => {
         $p.P0_15
     };
+}
+
+#[macro_export]
+macro_rules! tft_mosi {
+    ($p:ident) => {
+        $crate::p30!($p)
+    }
 }
 
 // TFT_CS HS
@@ -220,6 +278,13 @@ macro_rules! p31 {
     };
 }
 
+#[macro_export]
+macro_rules! tft_cs {
+    ($p:ident) => {
+        $crate::p31!($p)
+    }
+}
+
 // TFT_DC HS
 #[macro_export]
 macro_rules! p32 {
@@ -227,6 +292,14 @@ macro_rules! p32 {
         $p.P0_13
     };
 }
+
+#[macro_export]
+macro_rules! tft_dc {
+    ($p:ident) => {
+        $crate::p32!($p)
+    }
+}
+
 
 // TFT_RESET LS
 #[macro_export]
@@ -236,12 +309,27 @@ macro_rules! p33 {
     };
 }
 
+#[macro_export]
+macro_rules! tft_reset {
+    ($p:ident) => {
+        $crate::p33!($p)
+    }
+}
+
+
 // TFT_BACKLIGHT LS
 #[macro_export]
 macro_rules! p34 {
     ($p:ident) => {
         $p.P1_05
     };
+}
+
+#[macro_export]
+macro_rules! tft_backlight {
+    ($p:ident) => {
+        $crate::p34!($p)
+    }
 }
 
 // MICROPHONE_DATA HS XL1
@@ -252,12 +340,26 @@ macro_rules! p35 {
     };
 }
 
+#[macro_export]
+macro_rules! microphone_data {
+    ($p:ident) => {
+        $crate::p35!($p)
+    }
+}
+
 // MICROPHONE_CLOCK HS XL2
 #[macro_export]
 macro_rules! p36 {
     ($p:ident) => {
         $p.P0_01
     };
+}
+
+#[macro_export]
+macro_rules! microphone_clock {
+    ($p:ident) => {
+        $crate::p36!($p)
+    }
 }
 
 // WHITE_LEDS LS NFC2
@@ -268,12 +370,27 @@ macro_rules! p43 {
     };
 }
 
+#[macro_export]
+macro_rules! white_leds {
+    ($p:ident) => {
+        $crate::p43!($p)
+    }
+}
+
+
 // PROXIMITY_LIGHT_INTERRUPT LS NFC1
 #[macro_export]
 macro_rules! p44 {
     ($p:ident) => {
         $p.P0_09
     };
+}
+
+#[macro_export]
+macro_rules! proximity_light_interrupt {
+    ($p:ident) => {
+        $crate::p44!($p)
+    }
 }
 
 // ACCELEROMETER_GYRO_INTERRUPT LS
@@ -284,10 +401,24 @@ macro_rules! p45 {
     };
 }
 
+#[macro_export]
+macro_rules! accelerometer_gyro_interrupt {
+    ($p:ident) => {
+        $crate::p45!($p)
+    }
+}
+
 // SPEAKER QSPI
 #[macro_export]
 macro_rules! p46 {
     ($p:ident) => {
         $p.P1_00
     };
+}
+
+#[macro_export]
+macro_rules! speaker {
+    ($p:ident) => {
+        $crate::p46!($p)
+    }
 }

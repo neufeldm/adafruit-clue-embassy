@@ -3,8 +3,8 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    lcd_backlight, embassy_nrf_default_config, pins::output_pin, red_led, sensors_i2c_scl, sensors_i2c_sda,
-    white_led,
+    tft_backlight, embassy_nrf_default_config, pins::output_pin, red_led, sensors_i2c_scl, sensors_i2c_sda,
+    white_leds, 
 };
 use core::cell::RefCell;
 use core::mem;
@@ -113,40 +113,40 @@ async fn read_sensors(sensors_twim: Twim<'static>) {
 }
 
 #[nrf_softdevice::gatt_service(uuid = "ADAF0100-C332-42A8-93BD-25E905756CB8")]
-struct AdafruitTemperatureService {
+pub struct AdafruitTemperatureService {
     #[characteristic(uuid = "ADAF0001-C332-42A8-93BD-25E905756CB8", read, write)]
-    measurement_period: i32,
+    pub measurement_period: i32,
     #[characteristic(uuid = "ADAF0002-C332-42A8-93BD-25E905756CB8", read)]
-    version: u32,
+    pub version: u32,
     #[characteristic(uuid = "ADAF0101-C332-42A8-93BD-25E905756CB8", read, notify)]
-    temperature: f32,
+    pub temperature: f32,
 }
 
 #[nrf_softdevice::gatt_service(uuid = "ADAF0700-C332-42A8-93BD-25E905756CB8")]
-struct AdafruitHumidityService {
+pub struct AdafruitHumidityService {
     #[characteristic(uuid = "ADAF0001-C332-42A8-93BD-25E905756CB8", read, write)]
-    measurement_period: i32,
+    pub measurement_period: i32,
     #[characteristic(uuid = "ADAF0002-C332-42A8-93BD-25E905756CB8", read)]
-    version: u32,
+    pub version: u32,
     #[characteristic(uuid = "ADAF0701-C332-42A8-93BD-25E905756CB8", read, notify)]
-    humidity: f32,
+    pub humidity: f32,
 }
 
 #[nrf_softdevice::gatt_service(uuid = "ADAF0800-C332-42A8-93BD-25E905756CB8")]
-struct AdafruitBarometricPressureService {
+pub struct AdafruitBarometricPressureService {
     #[characteristic(uuid = "ADAF0001-C332-42A8-93BD-25E905756CB8", read, write)]
-    measurement_period: i32,
+    pub measurement_period: i32,
     #[characteristic(uuid = "ADAF0002-C332-42A8-93BD-25E905756CB8", read)]
-    version: u32,
+    pub version: u32,
     #[characteristic(uuid = "ADAF0801-C332-42A8-93BD-25E905756CB8", read, notify)]
-    pressure: f32,
+    pub pressure: f32,
 }
 
 #[nrf_softdevice::gatt_server]
-struct Server {
-    temp: AdafruitTemperatureService,
-    humid: AdafruitHumidityService,
-    pressure: AdafruitBarometricPressureService,
+pub struct Server {
+    pub temp: AdafruitTemperatureService,
+    pub humid: AdafruitHumidityService,
+    pub pressure: AdafruitBarometricPressureService,
 }
 
 async fn notify_sensor_readings<'a>(server: &'a Server, connection: &'a Connection) {
@@ -193,10 +193,10 @@ async fn notify_sensor_readings<'a>(server: &'a Server, connection: &'a Connecti
 async fn main(spawner: Spawner) {
     let nrf_config = embassy_nrf_default_config(true);
     let nrf_periph = embassy_nrf::init(nrf_config);
-    let mut white = output_pin(white_led!(nrf_periph), false);
+    let mut white = output_pin(white_leds!(nrf_periph), false);
     let mut red = output_pin(red_led!(nrf_periph), false);
     // Turn off the LCD backlight since we aren't using it.
-    output_pin(lcd_backlight!(nrf_periph), false);
+    output_pin(tft_backlight!(nrf_periph), false);
 
     let mut sd_config = adafruit_clue_embassy::nrf_softdevice_default_config();
     sd_config.gap_device_name =
