@@ -3,7 +3,7 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    lcd_backlight, nrf_default_config, output_pin, red_led, sensors_i2c_scl, sensors_i2c_sda,
+    lcd_backlight, embassy_nrf_default_config, pins::output_pin, red_led, sensors_i2c_scl, sensors_i2c_sda,
     white_led,
 };
 use core::cell::RefCell;
@@ -43,7 +43,7 @@ static SENSORS_BUFFER: StaticCell<[u8; 128]> = StaticCell::new();
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let nrf_config = nrf_default_config(true);
+    let nrf_config = embassy_nrf_default_config(true);
     let nrf_periph = embassy_nrf::init(nrf_config);
     let mut white = output_pin(white_led!(nrf_periph), false);
     let mut red = output_pin(red_led!(nrf_periph), false);

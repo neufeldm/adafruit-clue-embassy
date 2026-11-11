@@ -3,8 +3,8 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    button_a, button_b, input_pin,
-    output_pin, nrf_default_config, red_led, white_led,
+    button_a, button_b, pins::input_pin,
+    pins::output_pin, embassy_nrf_default_config, red_led, white_led,
 };
 use core::sync::atomic::{AtomicU32, Ordering};
 use embassy_executor::Spawner;
@@ -52,7 +52,7 @@ async fn button_task(mut pin: Input<'static>, on_ms: &'static AtomicU32) {
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let nrf_config = nrf_default_config(false);
+    let nrf_config = embassy_nrf_default_config(false);
     let nrf_periph = embassy_nrf::init(nrf_config);
     let red_led = output_pin(red_led!(nrf_periph), true);
     let white_led = output_pin(white_led!(nrf_periph), true);

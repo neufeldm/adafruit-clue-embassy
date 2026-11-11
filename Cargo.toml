@@ -18,6 +18,24 @@ nrf-softdevice = { version = "0.1.0", features = [
     "ble-gatt-server",
     "critical-section-impl",
 ] }
+embassy-time = { version = "0.5.1" }
+
+# screen
+display-interface-spi = "0.5.0"
+mipidsi = "0.10.0"
+
+# gyro/accel
+lsm6ds33 = "0.5.0"
+# magnetometer
+lis3mdl = { git = "https://github.com/ryanrightmer/lis3mdl" }
+# prox/gesture/light
+apds9960 = "0.1.0"
+# humidity
+sht3x = { git = "https://github.com/reitermarkus/sht3x-rs" }
+# temp/pressure
+bmp280-rs = "0.1.2"
+paste = "1.0.15"
+
 
 [dev-dependencies]
 static_cell = "2.1.1"

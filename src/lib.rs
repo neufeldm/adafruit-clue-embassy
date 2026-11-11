@@ -3,29 +3,26 @@
 
 #![no_std]
 
-mod pins;
-use embassy_nrf::Peri;
-use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pin, Pull};
-use embassy_nrf::{spim, twim};
+pub mod pins;
+pub mod board;
+use embassy_nrf as _;
+use embassy_nrf::{bind_interrupts, peripherals, spim, twim};
+use embassy_time::{Delay, Duration, Timer};
 use nrf_softdevice;
+// This is the generic display interface that we can
+// hand back if a user wants to get the LCD
+use mipidsi::{Display, Builder, models, interface::SpiInterface, options::Orientation, options::ColorInversion, options::Rotation};
 
-/// Take a raw board pin and turn it into an output.
-pub fn output_pin<'a>(pin: Peri<'a, impl Pin>, high: bool) -> Output<'a> {
-    Output::new(
-        pin,
-        if high { Level::High } else { Level::Low },
-        OutputDrive::Standard,
-    )
-}
+// Serial for the sensors
+// Pins for the buttons
+// Pins for the LEDs
+// USB, bluetooth?
 
-/// Take a raw board pin and turn it into an input.
-pub fn input_pin<'a>(pin: Peri<'a, impl Pin>, up: bool) -> Input<'a> {
-    Input::new(pin, if up { Pull::Up } else { Pull::Down })
-}
+
 
 /// Get a reasonable default Embassy NRF config for the Clue.
 /// When using the softdevice be sure to set "softdevice" to true.
-pub fn nrf_default_config(softdevice: bool) -> embassy_nrf::config::Config {
+pub fn embassy_nrf_default_config(softdevice: bool) -> embassy_nrf::config::Config {
     let mut nrf_config = embassy_nrf::config::Config::default();
     if softdevice {
         nrf_config.gpiote_interrupt_priority = embassy_nrf::interrupt::Priority::P2;
@@ -34,7 +31,7 @@ pub fn nrf_default_config(softdevice: bool) -> embassy_nrf::config::Config {
     nrf_config
 }
 
-/// Get a reasonable default Embassy NRF softdevice config for the Clue.
+/// Get a reasonable default NRF softdevice config for the Clue.
 pub fn nrf_softdevice_default_config() -> nrf_softdevice::Config {
     nrf_softdevice::Config {
         clock: Some(nrf_softdevice::raw::nrf_clock_lf_cfg_t {

@@ -3,7 +3,7 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    lcd_backlight, lcd_cs, lcd_dc, lcd_mosi, lcd_reset, lcd_sck, nrf_default_config, output_pin,
+    lcd_backlight, lcd_cs, lcd_dc, lcd_mosi, lcd_reset, lcd_sck, embassy_nrf_default_config, pins::output_pin,
     white_led, LCD_XSIZE, LCD_YSIZE,
 };
 use embassy_executor::Spawner;
@@ -27,7 +27,7 @@ bind_interrupts!(struct Irqs {
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let nrf_config = nrf_default_config(false);
+    let nrf_config = embassy_nrf_default_config(false);
     let nrf_periph = embassy_nrf::init(nrf_config);
     let mut _backlight = output_pin(lcd_backlight!(nrf_periph), true);
     let cs_pin = output_pin(lcd_cs!(nrf_periph), false);

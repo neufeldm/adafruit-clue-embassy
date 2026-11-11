@@ -3,7 +3,7 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    lcd_backlight, lcd_cs, lcd_dc, lcd_mosi, lcd_reset, lcd_sck, nrf_default_config, output_pin,
+    lcd_backlight, lcd_cs, lcd_dc, lcd_mosi, lcd_reset, lcd_sck, embassy_nrf_default_config, pins::output_pin,
     sensors_i2c_scl, sensors_i2c_sda, LCD_XSIZE, LCD_YSIZE,
 };
 use core::cell::RefCell;
@@ -52,7 +52,7 @@ bind_interrupts!(struct Irqs {
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let nrf_config = nrf_default_config(false);
+    let nrf_config = embassy_nrf_default_config(false);
     let nrf_periph = embassy_nrf::init(nrf_config);
 
     // Fire up the TFT.
