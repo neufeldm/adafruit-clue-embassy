@@ -217,7 +217,7 @@ macro_rules! p19 {
 }
 
 #[macro_export]
-macro_rules! sensors_i2c_scl {
+macro_rules! sensors_scl {
     ($p:ident) => {
         $crate::p19!($p)
     }
@@ -233,7 +233,7 @@ macro_rules! p20 {
 }
 
 #[macro_export]
-macro_rules! sensors_i2c_sda {
+macro_rules! sensors_sda {
     ($p:ident) => {
         $crate::p20!($p)
     }

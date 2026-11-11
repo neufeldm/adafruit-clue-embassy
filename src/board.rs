@@ -1,7 +1,11 @@
 
-use embassy_nrf::{Peri, Peripherals, spim, twim};
+use embassy_nrf::{Peri, Peripherals, bind_interrupts, spim, twim};
+use embassy_nrf::twim::{Config, InterruptHandler, Twim};
+use embassy_nrf::interrupt::typelevel::Binding;
 use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pin, Pull, AnyPin};
 use embassy_nrf::peripherals::{
+    P0_00, P0_01, P0_02, P0_03, P0_04, P0_05, P0_06, P0_07, P0_08, P0_09, P0_10, P0_11, P0_12, P0_13, P0_14, P0_15, P0_16, P0_17, P0_19, P0_20, P0_21, P0_22, P0_23, P0_24, P0_25, P0_26, P0_27, P0_28, P0_29, P0_30, P0_31,
+    P1_00, P1_01, P1_02, P1_03, P1_04, P1_05, P1_06, P1_07, P1_08, P1_09, P1_10, P1_11, P1_12, P1_13, P1_14, P1_15,
     TWISPI0, TWISPI1,
     SPI2, SPI3,
     PDM,
@@ -23,7 +27,6 @@ use embassy_nrf::peripherals::{
 //};
 use embassy_time::Delay;
 use nrf_softdevice;
-use crate::pins::{input_pin, output_pin};
 //use embedded_hal_bus::spi::ExclusiveDevice;
 use mipidsi;
 
@@ -42,90 +45,73 @@ pub type LED = Output<'static>;
 pub type Periph<P> = Peri<'static, P>;
 pub type OptPeriph<P> = Option<Periph<P>>;
 
-
-pub struct TFTPeripherals {
-    pub twispi: Periph<TWISPI0>,
-    pub sck: AnyPin,
-    pub mosi: AnyPin,
-    pub cs: AnyPin,
-    pub dc: AnyPin,
-    pub reset: AnyPin,
-    pub backlight: AnyPin,
-}
-
-// XXX going to split this into the arduino pin IDs
-// XXX and devices for our structs, then can provide
-// XXX convenience accessors for the circutpython
-// XXX names, and methods that scoop the correct
-// XXX pins/devices together to build wrappers
-
 pub struct Pins {
     // A2 HS AIN2
-    pub p0: Option<AnyPin>,
+    pub p0: OptPeriph<P0_04>,
     // A3 HS AIN3
-    pub p1: Option<AnyPin>,
+    pub p1: OptPeriph<P0_05>,
     // A4 LS AIN1
-    pub p2: Option<AnyPin>,
+    pub p2: OptPeriph<P0_03>,
     // A5 LS AIN4
-    pub p3: Option<AnyPin>,
+    pub p3: OptPeriph<P0_28>,
     // A6 LS AIN0
-    pub p4: Option<AnyPin>,
+    pub p4: OptPeriph<P0_02>,
     // BUTTON_A LS (D5) p5
-    pub button_a: Option<AnyPin>,
+    pub button_a: OptPeriph<P1_02>,
     // D6 HS
-    pub p6: Option<AnyPin>,
+    pub p6: OptPeriph<P1_09>,
     // D7 HS
-    pub p7: Option<AnyPin>,
+    pub p7: OptPeriph<P0_07>,
     // D8 LS
-    pub p8: Option<AnyPin>,
+    pub p8: OptPeriph<P1_07>,
     // D9 HS
-    pub p9: Option<AnyPin>,
+    pub p9: OptPeriph<P0_27>,
     // A7 LS AIN6
-    pub p10: Option<AnyPin>,
+    pub p10: OptPeriph<P0_30>,
     // BUTTON_B LS (D11) p11
-    pub button_b: Option<AnyPin>,
+    pub button_b: OptPeriph<P1_10>,
     // A0 LS AIN7
-    pub p12: Option<AnyPin>,
+    pub p12: OptPeriph<P0_31>,
     // SCK HS (D13?)
-    pub p13: Option<AnyPin>,
+    pub p13: OptPeriph<P0_08>,
     // MISO HS (D14?)
-    pub p14: Option<AnyPin>,
+    pub p14: OptPeriph<P0_06>,
     // MOSI HS (D15?)
-    pub p15: Option<AnyPin>,
+    pub p15: OptPeriph<P0_26>,
     // A1 LS AIN5
-    pub p16: Option<AnyPin>,
+    pub p16: OptPeriph<P0_29>,
     // L LS (red LED) p17
-    pub red_led: Option<AnyPin>,
+    pub red_led: OptPeriph<P1_01>,
     // NEOPIXEL HS (D18) p18
-    pub neopixel: Option<AnyPin>,
+    pub neopixel: OptPeriph<P0_16>,
     // SCL HS (sensors I2C) p19
-    pub sensors_i2c_scl: Option<AnyPin>,
+    pub sensors_scl: OptPeriph<P0_25>,
     // SDA HS (sensors I2C)
-    pub sensors_i2c_sda: Option<AnyPin>,
+    pub sensors_sda: OptPeriph<P0_24>,
     // TFT_SCK HS p29
-    pub tft_sck: Option<AnyPin>,
+    pub tft_sck: OptPeriph<P0_14>,
     // TFT_MOSI HS p30
-    pub tft_mosi: Option<AnyPin>,
+    pub tft_mosi: OptPeriph<P0_15>,
     // TFT_CS HS p31
-    pub tft_cs: Option<AnyPin>,
+    pub tft_cs: OptPeriph<P0_12>,
     // TFT_DC HS p32
-    pub tft_dc: Option<AnyPin>,
+    pub tft_dc: OptPeriph<P0_13>,
     // TFT_RESET LS p33
-    pub tft_reset: Option<AnyPin>,
+    pub tft_reset: OptPeriph<P1_03>,
     // TFT_BACKLIGHT LS p34
-    pub tft_backlight: Option<AnyPin>,
+    pub tft_backlight: OptPeriph<P1_05>,
     // MICROPHONE_DATA HS XL1 p35
-    pub microphone_data: Option<AnyPin>,
+    pub microphone_data: OptPeriph<P0_00>,
     // MICROPHONE_CLOCK HS XL2 p36
-    pub microphone_clock: Option<AnyPin>,
+    pub microphone_clock: OptPeriph<P0_01>,
     // WHITE_LEDS LS NFC2 p43
-    pub white_leds: Option<AnyPin>,
+    pub white_leds: OptPeriph<P0_10>,
     // PROXIMITY_LIGHT_INTERRUPT LS NFC1 p44
-    pub proximity_light_interrupt: Option<AnyPin>,
+    pub proximity_light_interrupt: OptPeriph<P0_09>,
     // ACCELEROMETER_GYRO_INTERRUPT LS p45
-    pub accelerometer_gyro_interrupt: Option<AnyPin>,
+    pub accelerometer_gyro_interrupt: OptPeriph<P1_06>,
     // SPEAKER QSPI p46
-    pub speaker: Option<AnyPin>,
+    pub speaker: OptPeriph<P1_00>,
 }
 
 pub struct PWM(
@@ -181,7 +167,7 @@ pub struct Board {
 
 macro_rules! opt_pin {
     ($pin:ident, $periph:ident) => {
-        Some((*crate::$pin!($periph)).into())
+        Some(crate::$pin!($periph))
     }
 }
 macro_rules! opt_ppi {
@@ -215,8 +201,8 @@ impl Board {
                 p16: opt_pin!(p16, p),
                 red_led: opt_pin!(red_led, p),
                 neopixel: opt_pin!(neopixel, p),
-                sensors_i2c_scl: opt_pin!(sensors_i2c_scl, p),
-                sensors_i2c_sda: opt_pin!(sensors_i2c_sda, p),
+                sensors_scl: opt_pin!(sensors_scl, p),
+                sensors_sda: opt_pin!(sensors_sda, p),
                 tft_sck: opt_pin!(tft_sck, p),
                 tft_mosi: opt_pin!(tft_mosi, p),
                 tft_cs: opt_pin!(tft_cs, p),
@@ -263,26 +249,6 @@ impl Board {
             nrf_config.time_interrupt_priority = embassy_nrf::interrupt::Priority::P2;
         }
         nrf_config
-    }
-    pub fn get_tft_peripherals(&mut self) -> Option<TFTPeripherals> {
-        if self.serial.twispi0.is_none() ||
-           self.pins.tft_sck.is_none() ||
-           self.pins.tft_mosi.is_none() ||
-           self.pins.tft_cs.is_none() ||
-           self.pins.tft_dc.is_none() ||
-           self.pins.tft_reset.is_none() ||
-           self.pins.tft_backlight.is_none() {
-            return None;
-        }
-        Some(TFTPeripherals {
-            twispi: self.serial.twispi0.take()?,
-            sck: self.pins.tft_sck.take()?,
-            mosi: self.pins.tft_mosi.take()?,
-            cs: self.pins.tft_cs.take()?,
-            dc: self.pins.tft_dc.take()?,
-            reset: self.pins.tft_reset.take()?,
-            backlight: self.pins.tft_backlight.take()?,
-        })
     }
 
 }

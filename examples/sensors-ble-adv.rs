@@ -3,7 +3,7 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    tft_backlight, embassy_nrf_default_config, pins::output_pin, red_led, sensors_i2c_scl, sensors_i2c_sda,
+    tft_backlight, embassy_nrf_default_config, pins::output_pin, red_led, sensors_scl, sensors_sda,
     white_leds,
 };
 use core::cell::RefCell;
@@ -70,8 +70,8 @@ async fn main(spawner: Spawner) {
     let sensors_twim = twim::Twim::new(
         nrf_periph.TWISPI1,
         Irqs,
-        sensors_i2c_sda!(nrf_periph),
-        sensors_i2c_scl!(nrf_periph),
+        sensors_sda!(nrf_periph),
+        sensors_scl!(nrf_periph),
         sensors_twim_config,
         sensors_twim_buffer
     );
