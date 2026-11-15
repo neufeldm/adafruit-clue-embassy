@@ -36,6 +36,7 @@ sht3x = { git = "https://github.com/reitermarkus/sht3x-rs" }
 bmp280-rs = "0.1.2"
 paste = "1.0.15"
 embedded-hal-bus = "0.3.0"
+embedded-hal = "1.0.0"
 
 
 [dev-dependencies]

@@ -3,8 +3,7 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
-    button_a, button_b, pins::input_pin,
-    pins::output_pin, embassy_nrf_default_config, red_led, white_leds,
+    AdafruitClue,
 };
 use core::sync::atomic::{AtomicU32, Ordering};
 use embassy_executor::Spawner;
@@ -52,10 +51,13 @@ async fn button_task(mut pin: Input<'static>, on_ms: &'static AtomicU32) {
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let nrf_config = embassy_nrf_default_config(false);
-    let nrf_periph = embassy_nrf::init(nrf_config);
-    let red_led = output_pin(red_led!(nrf_periph), true);
-    let white_led = output_pin(white_leds!(nrf_periph), true);
+    let mut clue = AdafruitClue::new();
+    let red_led = clue.red_led(true).unwrap();
+    let white_led = clue.white_leds(true).unwrap();
+    //let nrf_config = embassy_nrf_default_config(false);
+    //let nrf_periph = embassy_nrf::init(nrf_config);
+    //let red_led = output_pin(red_led!(nrf_periph), true);
+    //let white_led = output_pin(white_leds!(nrf_periph), true);
     spawner
         .spawn(blink(
             red_led,
@@ -63,11 +65,13 @@ async fn main(spawner: Spawner) {
         ).unwrap());
 
 
-    let button_a = input_pin(button_a!(nrf_periph), true);
+    //let button_a = input_pin(button_a!(nrf_periph), true);
+    let button_a = clue.button_a().unwrap();
     spawner
         .spawn(button_task(button_a, &BLINK_1_ON_MS).unwrap());
 
-    let button_b = input_pin(button_b!(nrf_periph), true);
+    //let button_b = input_pin(button_b!(nrf_periph), true);
+    let button_b = clue.button_b().unwrap();
     spawner
         .spawn(button_task(button_b, &BLINK_2_ON_MS).unwrap());
 }

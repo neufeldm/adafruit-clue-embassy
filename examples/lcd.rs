@@ -3,6 +3,7 @@
 
 use adafruit_clue_embassy;
 use adafruit_clue_embassy::{
+    AdafruitClue,
     tft_backlight, tft_cs, tft_dc, tft_mosi, tft_reset, tft_sck, embassy_nrf_default_config, pins::output_pin,
     white_leds, board::TFT_XSIZE, board::TFT_YSIZE,
 };
@@ -22,7 +23,7 @@ use embedded_graphics::{
 use mipidsi::{Builder, models, interface::SpiInterface, options::Orientation, options::ColorInversion, options::Rotation};
 
 bind_interrupts!(struct Irqs {
-    SPIM3 => spim::InterruptHandler<peripherals::SPI3>;
+    TWISPI1 => spim::InterruptHandler<peripherals::TWISPI1>;
 });
 
 #[embassy_executor::main]
@@ -53,6 +54,8 @@ async fn main(_spawner: Spawner) {
         .reset_pin(output_pin(tft_reset!(nrf_periph), false))
         .init(&mut display_delay)
         .unwrap();
+    let mut clue = AdafruitClue::new();
+    let mut display = clue.tft_display_spi1();
     display.clear(Rgb565::BLACK).unwrap();
     let text_style = MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE);
     Text::new("Hello Kitty!", Point::new(10, 210), text_style)

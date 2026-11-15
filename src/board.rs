@@ -1,10 +1,10 @@
 
-use embassy_nrf::{Peri, Peripherals, bind_interrupts, spim, twim};
+use embassy_nrf::{Peri, Peripherals, spim, twim};
 use embassy_nrf::interrupt::typelevel::Binding;
-use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pin, Pull, AnyPin};
+use embassy_nrf::gpio::{Input, Level, Output, OutputDrive};
 use embassy_nrf::peripherals::{
-    P0_00, P0_01, P0_02, P0_03, P0_04, P0_05, P0_06, P0_07, P0_08, P0_09, P0_10, P0_11, P0_12, P0_13, P0_14, P0_15, P0_16, P0_17, P0_19, P0_20, P0_21, P0_22, P0_23, P0_24, P0_25, P0_26, P0_27, P0_28, P0_29, P0_30, P0_31,
-    P1_00, P1_01, P1_02, P1_03, P1_04, P1_05, P1_06, P1_07, P1_08, P1_09, P1_10, P1_11, P1_12, P1_13, P1_14, P1_15,
+    P0_00, P0_01, P0_02, P0_03, P0_04, P0_05, P0_06, P0_07, P0_08, P0_09, P0_10, P0_12, P0_13, P0_14, P0_15, P0_16, P0_17, P0_19, P0_20, P0_21, P0_22, P0_23, P0_24, P0_25, P0_26, P0_27, P0_28, P0_29, P0_30, P0_31,
+    P1_00, P1_01, P1_02, P1_03, P1_05, P1_06, P1_07, P1_09, P1_10,
     TWISPI0, TWISPI1,
     SPI2, SPI3,
     PDM,
@@ -25,9 +25,10 @@ use embassy_nrf::peripherals::{
 //    UARTE1,PDM,
 //};
 use embassy_time::Delay;
-use embedded_hal_bus::spi
-use nrf_softdevice;
+use embedded_hal_bus::spi;
+//use nrf_softdevice;
 use mipidsi;
+use embedded_hal;
 
 // Sensor I2C IDs
 pub const I2C_GYROACCEL: u8 = 0x6A;
@@ -38,9 +39,8 @@ pub const I2C_TEMPPRESSURE: u8 = 0x77;
 
 pub const TFT_XSIZE: u16 = 240;
 pub const TFT_YSIZE: u16 = 240;
+pub type TFTModel = mipidsi::models::ST7789;
 
-pub type Button = Input<'static>;
-pub type LED = Output<'static>;
 pub type Periph<P> = Peri<'static, P>;
 pub type OptPeriph<P> = Option<Periph<P>>;
 
@@ -150,7 +150,7 @@ pub struct GPIOTE(
     pub OptPeriph<GPIOTE_CH7>,
 );
 
-pub struct Board {
+pub struct AdafruitClue {
     pub pins: Pins,
     pub serial: Serial,
     pub uarte: UARTE,
@@ -162,6 +162,7 @@ pub struct Board {
     pub ppi: PPI,
     pub ppi_group: PPIGroup,
     pub nvmc: OptPeriph<NVMC>,
+    tft_delay: Delay,
 }
 
 macro_rules! opt_pin {
@@ -177,9 +178,9 @@ macro_rules! opt_ppi {
     };
 }
 
-impl Board {
-    pub fn new(p: Peripherals) -> Self {
-        Board {
+impl AdafruitClue {
+    pub fn new_from_peripherals(p: Peripherals) -> Self {
+        AdafruitClue {
             pins: Pins {
                 p0: opt_pin!(p0, p),
                 p1: opt_pin!(p1, p),
@@ -230,14 +231,18 @@ impl Board {
             ppi: PPI(opt_ppi!(0,p), opt_ppi!(1,p), opt_ppi!(2,p), opt_ppi!(3,p), opt_ppi!(4,p), opt_ppi!(5,p), opt_ppi!(6,p), opt_ppi!(7,p), opt_ppi!(8,p), opt_ppi!(9,p), opt_ppi!(10,p), opt_ppi!(11,p), opt_ppi!(12,p), opt_ppi!(13,p), opt_ppi!(14,p), opt_ppi!(15,p), opt_ppi!(16,p), opt_ppi!(17,p), opt_ppi!(18,p), opt_ppi!(19,p), opt_ppi!(20,p), opt_ppi!(21,p), opt_ppi!(22,p), opt_ppi!(23,p), opt_ppi!(24,p), opt_ppi!(25,p), opt_ppi!(26,p), opt_ppi!(27,p), opt_ppi!(28,p), opt_ppi!(29,p), opt_ppi!(30,p), opt_ppi!(31,p)),
             ppi_group: PPIGroup(Some(p.PPI_GROUP0), Some(p.PPI_GROUP1), Some(p.PPI_GROUP2), Some(p.PPI_GROUP3), Some(p.PPI_GROUP4), Some(p.PPI_GROUP5)),
             nvmc: Some(p.NVMC),
+            tft_delay: Delay{},
         }
     }
     pub fn new_from_config(nrf_config: embassy_nrf::config::Config) -> Self {
         let p = embassy_nrf::init(nrf_config);
-        Self::new(p)
+        Self::new_from_peripherals(p)
     }
-    pub fn new_default_config(use_softdevice: bool) -> Self {
-        Self::new_from_config(Self::embassy_nrf_default_config(use_softdevice))
+    pub fn new_softdevice() -> Self {
+        Self::new_from_config(Self::embassy_nrf_default_config(true))
+    }
+    pub fn new() -> Self {
+        Self::new_from_config(Self::embassy_nrf_default_config(false))
     }
     /// Get a reasonable default Embassy NRF config for the Clue.
     /// When using the softdevice be sure to set "softdevice" to true.
@@ -249,7 +254,7 @@ impl Board {
         }
         nrf_config
     }
-    pub fn sensors_twim<'a, T>(
+    pub fn sensors_twim_config<'a, T>(
         &mut self,
         peri: Peri<'a, T>,
         irq: impl Binding<T::Interrupt, twim::InterruptHandler<T>> + 'a,
@@ -276,12 +281,12 @@ impl Board {
     where
         T: twim::Instance,
     {
-        self.sensors_twim(peri, irq, buf, crate::sensors_twim_config())
+        self.sensors_twim_config(peri, irq, buf, crate::sensors_twim_config())
     }
 
-    pub fn sensors_twim_default<'a>(
+    pub fn sensors_twim0<'a>(
         &mut self,
-        irq: impl Binding<<embassy_nrf::peripherals::TWISPI0 as embassy_nrf::spim::Instance>::Interrupt, InterruptHandler<TWISPI0>> + 'a,
+        irq: impl Binding<<embassy_nrf::peripherals::TWISPI0 as embassy_nrf::spim::Instance>::Interrupt, twim::InterruptHandler<TWISPI0>> + 'a,
         buf: &'a mut [u8],
     )-> Option<twim::Twim<'a>> {
         let spi = self.serial.twispi0.take()?;
@@ -310,10 +315,94 @@ impl Board {
             config,
         ))
     }
-    pub fn tft_spi_interface<'a>(&mut self, spi_bus: spim::Spim<'a>) -> Option<spi::ExclusiveDevice<spim::Spim<'a>,Output<'a>,Delay>> {
-        let tft_dc = self.pins.tft_dc.take()?;
-        let tft_dc_output = Output::new(tft_dc,Level::Low,OutputDrive::Standard);
-        spi::ExclusiveDevice::new(spi_bus,tft_dc_output,Delay{}).ok()
+
+
+    pub fn tft_spi_device<'a>(&mut self, spi_bus: spim::Spim<'a>) -> Option<spi::ExclusiveDevice<spim::Spim<'a>,Output<'a>,Delay>> {
+        let cs = self.pins.tft_cs.take()?;
+        // XXX should the cs_output be set low?
+        let cs_output = Output::new(cs,Level::Low,OutputDrive::Standard);
+        spi::ExclusiveDevice::new(spi_bus,cs_output,Delay{}).ok()
+    }
+
+    pub fn tft_display_interface_from_spi<'a, SPID>(
+        &mut self,
+        spi_device: SPID,
+        buf: &'a mut [u8],
+    ) -> Option<mipidsi::interface::SpiInterface<'a, SPID, Output<'static>>>
+    where SPID: embedded_hal::spi::SpiDevice,
+    {
+        let dc_pin = crate::pins::output_pin(self.pins.tft_dc.take()?, false);
+        Some(mipidsi::interface::SpiInterface::new(spi_device, dc_pin, buf))
+    }
+
+    pub fn tft_display_builder_from_di<DI>(
+        &mut self,
+        display_interface: DI,
+    ) -> Option<mipidsi::Builder<DI, TFTModel, Output<'static>>>
+    where DI: mipidsi::interface::Interface<Word = u8>,
+    {
+        let rst_pin = crate::pins::output_pin(self.pins.tft_reset.take()?, false);
+
+        Some(
+            mipidsi::Builder::new(TFTModel{}, display_interface)
+            .reset_pin(rst_pin)
+            .display_size(TFT_XSIZE, TFT_YSIZE)
+            .orientation(mipidsi::options::Orientation::new().rotate(mipidsi::options::Rotation::Deg270))
+            .invert_colors(mipidsi::options::ColorInversion::Inverted)
+        )
+    }
+    pub fn tft_display_from_di_delay<DI>(
+        &mut self,
+        display_interface: DI,
+        delay: &mut Delay,
+    ) -> Option<mipidsi::Display<DI, TFTModel, Output<'static>>>
+    where DI: mipidsi::interface::Interface<Word = u8>,
+    {
+        let db = self.tft_display_builder_from_di(display_interface);
+        db?.init(delay).ok()
+    }
+    pub fn tft_display_from_di<DI>(
+        &mut self,
+        display_interface: DI,
+    ) -> Option<mipidsi::Display<DI, TFTModel, Output<'static>>>
+    where DI: mipidsi::interface::Interface<Word = u8>,
+    {
+        let db = self.tft_display_builder_from_di(display_interface);
+        db?.init(&mut self.tft_delay).ok()
+    }
+
+    pub fn tft_display_spi1<'buf>(
+        &mut self,
+        irq: impl Binding<<embassy_nrf::peripherals::TWISPI1 as embassy_nrf::spim::Instance>::Interrupt, spim::InterruptHandler<TWISPI1>> + 'static,
+        di_buf: &'buf mut [u8]
+    ) ->
+    Option<
+      mipidsi::Display<mipidsi::interface::SpiInterface<'buf, embedded_hal_bus::spi::ExclusiveDevice<spim::Spim<'_>, Output<'_>, Delay>, Output<'_>>, TFTModel, Output<'_>>
+    >
+    {
+        // XXX check all devices we need ahead of time...
+        let spi = self.serial.twispi1.take()?;
+        let spi_bus = self.tft_spi_bus(spi, irq, crate::tft_spi_config())?;
+        let spi_dev = self.tft_spi_device(spi_bus)?;
+        let di = self.tft_display_interface_from_spi(spi_dev, di_buf)?;
+        self.tft_display_from_di(di)
+    }
+
+    pub fn red_led(&mut self, on: bool) -> Option<Output<'static>> {
+        let red_pin = self.pins.red_led.take();
+        Some(crate::pins::output_pin(red_pin?, on))
+    }
+    pub fn white_leds(&mut self, on: bool) -> Option<Output<'static>> {
+        let white_pin = self.pins.white_leds.take();
+        Some(crate::pins::output_pin(white_pin?, on))
+    }
+    pub fn button_a(&mut self) -> Option<Input<'static>> {
+        let button_pin = self.pins.button_a.take();
+        Some(crate::pins::input_pin(button_pin?, true))
+    }
+    pub fn button_b(&mut self) -> Option<Input<'static>> {
+        let button_pin = self.pins.button_b.take();
+        Some(crate::pins::input_pin(button_pin?, true))
     }
 }
 

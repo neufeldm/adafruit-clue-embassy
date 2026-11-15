@@ -5,13 +5,14 @@
 
 pub mod pins;
 pub mod board;
+pub use board::AdafruitClue;
 use embassy_nrf as _;
 use embassy_nrf::{bind_interrupts, peripherals, spim, twim};
 use embassy_time::{Delay, Duration, Timer};
 use nrf_softdevice;
 // This is the generic display interface that we can
 // hand back if a user wants to get the LCD
-use mipidsi::{Display, Builder, models, interface::SpiInterface, options::Orientation, options::ColorInversion, options::Rotation};
+//use mipidsi::{Display, Builder, models, interface::SpiInterface, options::Orientation, options::ColorInversion, options::Rotation};
 
 // Serial for the sensors
 // Pins for the buttons
