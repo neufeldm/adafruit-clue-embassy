@@ -21,7 +21,8 @@ use embedded_graphics::{
     text::Text,
 };
 use mipidsi::{Builder, models, interface::SpiInterface, options::Orientation, options::ColorInversion, options::Rotation};
-
+use static_cell::StaticCell;
+static DI_BUFFER: StaticCell<[u8; 512]> = StaticCell::new();
 bind_interrupts!(struct Irqs {
     TWISPI1 => spim::InterruptHandler<peripherals::TWISPI1>;
 });
@@ -43,7 +44,8 @@ async fn main(_spawner: Spawner) {
     //);
     //let spi_device_delay = Delay {};
     //let spi_device = ExclusiveDevice::new(spi_bus, cs_pin, spi_device_delay).expect("Unable to create ExclusiveDevice!");
-    let mut di_buffer = [0_u8; 512]; 
+    //let mut di_buffer = [0_u8; 512]; 
+    let di_buffer = DI_BUFFER.init([0_u8; 512]);
     //let display_interface = SpiInterface::new(spi_device, output_pin(tft_dc!(nrf_periph),false), &mut di_buffer);
 
     //let mut display_delay = Delay {};
@@ -58,7 +60,7 @@ async fn main(_spawner: Spawner) {
     // Turn the backlight on
     let mut _backlight = output_pin(clue.pins.tft_backlight.take().unwrap(), true);
     let mut tft_delay = Delay{};
-    let mut display = clue.tft_display_spi1(Irqs, &mut di_buffer, &mut tft_delay).unwrap();
+    let mut display = clue.tft_display_spi1(Irqs, di_buffer, &mut tft_delay).unwrap();
     display.clear(Rgb565::BLACK).unwrap();
     let text_style = MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE);
     Text::new("Hello Kitty!", Point::new(10, 210), text_style)
