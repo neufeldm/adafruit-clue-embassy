@@ -28,34 +28,37 @@ bind_interrupts!(struct Irqs {
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let nrf_config = embassy_nrf_default_config(false);
-    let nrf_periph = embassy_nrf::init(nrf_config);
-    let mut _backlight = output_pin(tft_backlight!(nrf_periph), true);
-    let cs_pin = output_pin(tft_cs!(nrf_periph), false);
+    //let nrf_config = embassy_nrf_default_config(false);
+    //let nrf_periph = embassy_nrf::init(nrf_config);
+    //let mut _backlight = output_pin(tft_backlight!(nrf_periph), true);
+    //let cs_pin = output_pin(tft_cs!(nrf_periph), false);
 
-    let spi_config = adafruit_clue_embassy::tft_spi_config();
-    let spi_bus = spim::Spim::new_txonly(
-        nrf_periph.SPI3,
-        Irqs,
-        tft_sck!(nrf_periph),
-        tft_mosi!(nrf_periph),
-        spi_config,
-    );
-    let spi_device_delay = Delay {};
-    let spi_device = ExclusiveDevice::new(spi_bus, cs_pin, spi_device_delay).expect("Unable to create ExclusiveDevice!");
+    //let spi_config = adafruit_clue_embassy::tft_spi_config();
+    //let spi_bus = spim::Spim::new_txonly(
+    //    nrf_periph.SPI3,
+    //    Irqs,
+    //    tft_sck!(nrf_periph),
+    //    tft_mosi!(nrf_periph),
+    //    spi_config,
+    //);
+    //let spi_device_delay = Delay {};
+    //let spi_device = ExclusiveDevice::new(spi_bus, cs_pin, spi_device_delay).expect("Unable to create ExclusiveDevice!");
     let mut di_buffer = [0_u8; 512]; 
-    let display_interface = SpiInterface::new(spi_device, output_pin(tft_dc!(nrf_periph),false), &mut di_buffer);
+    //let display_interface = SpiInterface::new(spi_device, output_pin(tft_dc!(nrf_periph),false), &mut di_buffer);
 
-    let mut display_delay = Delay {};
-    let mut display = Builder::new(models::ST7789, display_interface)
-        .display_size(TFT_XSIZE, TFT_YSIZE)
-        .orientation(Orientation::new().rotate(Rotation::Deg270))
-        .invert_colors(ColorInversion::Inverted)
-        .reset_pin(output_pin(tft_reset!(nrf_periph), false))
-        .init(&mut display_delay)
-        .unwrap();
+    //let mut display_delay = Delay {};
+    //let mut display = Builder::new(models::ST7789, display_interface)
+    //    .display_size(TFT_XSIZE, TFT_YSIZE)
+    //    .orientation(Orientation::new().rotate(Rotation::Deg270))
+    //    .invert_colors(ColorInversion::Inverted)
+    //    .reset_pin(output_pin(tft_reset!(nrf_periph), false))
+    //    .init(&mut display_delay)
+    //    .unwrap();
     let mut clue = AdafruitClue::new();
-    let mut display = clue.tft_display_spi1();
+    // Turn the backlight on
+    let mut _backlight = output_pin(clue.pins.tft_backlight.take().unwrap(), true);
+    let mut tft_delay = Delay{};
+    let mut display = clue.tft_display_spi1(Irqs, &mut di_buffer, &mut tft_delay).unwrap();
     display.clear(Rgb565::BLACK).unwrap();
     let text_style = MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE);
     Text::new("Hello Kitty!", Point::new(10, 210), text_style)
@@ -65,7 +68,7 @@ async fn main(_spawner: Spawner) {
         Circle::new(Point::new(x, y), 64).into_styled(PrimitiveStyle::with_fill(color))
     };
     let mut circle_colors = [Rgb565::RED, Rgb565::GREEN, Rgb565::BLUE, Rgb565::WHITE];
-    let mut led = output_pin(white_leds!(nrf_periph), false);
+    let mut led = clue.white_leds(false).unwrap();
     loop {
         make_circle(128, 64, circle_colors[0])
             .draw(&mut display)

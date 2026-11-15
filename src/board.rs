@@ -162,7 +162,6 @@ pub struct AdafruitClue {
     pub ppi: PPI,
     pub ppi_group: PPIGroup,
     pub nvmc: OptPeriph<NVMC>,
-    tft_delay: Delay,
 }
 
 macro_rules! opt_pin {
@@ -231,7 +230,6 @@ impl AdafruitClue {
             ppi: PPI(opt_ppi!(0,p), opt_ppi!(1,p), opt_ppi!(2,p), opt_ppi!(3,p), opt_ppi!(4,p), opt_ppi!(5,p), opt_ppi!(6,p), opt_ppi!(7,p), opt_ppi!(8,p), opt_ppi!(9,p), opt_ppi!(10,p), opt_ppi!(11,p), opt_ppi!(12,p), opt_ppi!(13,p), opt_ppi!(14,p), opt_ppi!(15,p), opt_ppi!(16,p), opt_ppi!(17,p), opt_ppi!(18,p), opt_ppi!(19,p), opt_ppi!(20,p), opt_ppi!(21,p), opt_ppi!(22,p), opt_ppi!(23,p), opt_ppi!(24,p), opt_ppi!(25,p), opt_ppi!(26,p), opt_ppi!(27,p), opt_ppi!(28,p), opt_ppi!(29,p), opt_ppi!(30,p), opt_ppi!(31,p)),
             ppi_group: PPIGroup(Some(p.PPI_GROUP0), Some(p.PPI_GROUP1), Some(p.PPI_GROUP2), Some(p.PPI_GROUP3), Some(p.PPI_GROUP4), Some(p.PPI_GROUP5)),
             nvmc: Some(p.NVMC),
-            tft_delay: Delay{},
         }
     }
     pub fn new_from_config(nrf_config: embassy_nrf::config::Config) -> Self {
@@ -361,20 +359,12 @@ impl AdafruitClue {
         let db = self.tft_display_builder_from_di(display_interface);
         db?.init(delay).ok()
     }
-    pub fn tft_display_from_di<DI>(
-        &mut self,
-        display_interface: DI,
-    ) -> Option<mipidsi::Display<DI, TFTModel, Output<'static>>>
-    where DI: mipidsi::interface::Interface<Word = u8>,
-    {
-        let db = self.tft_display_builder_from_di(display_interface);
-        db?.init(&mut self.tft_delay).ok()
-    }
 
     pub fn tft_display_spi1<'buf>(
         &mut self,
         irq: impl Binding<<embassy_nrf::peripherals::TWISPI1 as embassy_nrf::spim::Instance>::Interrupt, spim::InterruptHandler<TWISPI1>> + 'static,
-        di_buf: &'buf mut [u8]
+        di_buf: &'buf mut [u8],
+        delay: &mut Delay,
     ) ->
     Option<
       mipidsi::Display<mipidsi::interface::SpiInterface<'buf, embedded_hal_bus::spi::ExclusiveDevice<spim::Spim<'_>, Output<'_>, Delay>, Output<'_>>, TFTModel, Output<'_>>
@@ -385,7 +375,7 @@ impl AdafruitClue {
         let spi_bus = self.tft_spi_bus(spi, irq, crate::tft_spi_config())?;
         let spi_dev = self.tft_spi_device(spi_bus)?;
         let di = self.tft_display_interface_from_spi(spi_dev, di_buf)?;
-        self.tft_display_from_di(di)
+        self.tft_display_from_di_delay(di, delay)
     }
 
     pub fn red_led(&mut self, on: bool) -> Option<Output<'static>> {
