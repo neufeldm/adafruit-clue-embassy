@@ -315,10 +315,10 @@ impl AdafruitClue {
     }
 
 
-    pub fn tft_spi_device<'a>(&mut self, spi_bus: spim::Spim<'a>) -> Option<spi::ExclusiveDevice<spim::Spim<'a>,Output<'a>,Delay>> {
+    pub fn tft_spi_device(&mut self, spi_bus: spim::Spim<'static>) -> Option<spi::ExclusiveDevice<spim::Spim<'static>,Output<'static>,Delay>> {
         let cs = self.pins.tft_cs.take()?;
         // XXX should the cs_output be set low?
-        let cs_output = Output::new(cs,Level::Low,OutputDrive::Standard);
+        let cs_output = Output::new(cs,Level::High,OutputDrive::Standard);
         spi::ExclusiveDevice::new(spi_bus,cs_output,Delay{}).ok()
     }
 
