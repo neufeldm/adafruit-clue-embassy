@@ -252,13 +252,13 @@ impl AdafruitClue {
         }
         nrf_config
     }
-    pub fn sensors_twim_config<'a, T>(
+    pub fn sensors_twim_config<T>(
         &mut self,
-        peri: Peri<'a, T>,
-        irq: impl Binding<T::Interrupt, twim::InterruptHandler<T>> + 'a,
-        buf: &'a mut [u8],
+        peri: Peri<'static, T>,
+        irq: impl Binding<T::Interrupt, twim::InterruptHandler<T>> + 'static,
+        buf: &'static mut [u8],
         config: twim::Config,
-    ) -> Option<twim::Twim<'a>>
+    ) -> Option<twim::Twim<'static>>
     where
         T: twim::Instance,
     {
@@ -270,33 +270,33 @@ impl AdafruitClue {
         Some(twim::Twim::new(peri, irq, self.pins.sensors_sda.take()?, self.pins.sensors_scl.take()?, config, buf))
     }
 
-    pub fn sensors_twim_default_config<'a, T>(
+    pub fn sensors_twim_default_config<T>(
         &mut self,
-        peri: Peri<'a, T>,
-        irq: impl Binding<T::Interrupt, twim::InterruptHandler<T>> + 'a,
-        buf: &'a mut [u8],
-    ) -> Option<twim::Twim<'a>>
+        peri: Peri<'static, T>,
+        irq: impl Binding<T::Interrupt, twim::InterruptHandler<T>> + 'static,
+        buf: &'static mut [u8],
+    ) -> Option<twim::Twim<'static>>
     where
         T: twim::Instance,
     {
         self.sensors_twim_config(peri, irq, buf, crate::sensors_twim_config())
     }
 
-    pub fn sensors_twim0<'a>(
+    pub fn sensors_twim0(
         &mut self,
-        irq: impl Binding<<embassy_nrf::peripherals::TWISPI0 as embassy_nrf::spim::Instance>::Interrupt, twim::InterruptHandler<TWISPI0>> + 'a,
-        buf: &'a mut [u8],
-    )-> Option<twim::Twim<'a>> {
+        irq: impl Binding<<embassy_nrf::peripherals::TWISPI0 as embassy_nrf::spim::Instance>::Interrupt, twim::InterruptHandler<TWISPI0>> + 'static,
+        buf: &'static mut [u8],
+    )-> Option<twim::Twim<'static>> {
         let spi = self.serial.twispi0.take()?;
         self.sensors_twim_default_config(spi, irq, buf)
     }
 
-    pub fn tft_spi_bus<'a, T>(
+    pub fn tft_spi_bus<T>(
         &mut self,
-        peri: Peri<'a, T>,
-        irq: impl Binding<T::Interrupt, spim::InterruptHandler<T>> + 'a,
+        peri: Peri<'static, T>,
+        irq: impl Binding<T::Interrupt, spim::InterruptHandler<T>> + 'static,
         config: spim::Config,
-    ) -> Option<spim::Spim<'a>>
+    ) -> Option<spim::Spim<'static>>
     where
         T: spim::Instance,
     {
@@ -322,11 +322,11 @@ impl AdafruitClue {
         spi::ExclusiveDevice::new(spi_bus,cs_output,Delay{}).ok()
     }
 
-    pub fn tft_display_interface_from_spi<'a, SPID>(
+    pub fn tft_display_interface_from_spi<SPID>(
         &mut self,
         spi_device: SPID,
-        buf: &'a mut [u8],
-    ) -> Option<mipidsi::interface::SpiInterface<'a, SPID, Output<'static>>>
+        buf: &'static mut [u8],
+    ) -> Option<mipidsi::interface::SpiInterface<'static, SPID, Output<'static>>>
     where SPID: embedded_hal::spi::SpiDevice,
     {
         let dc_pin = crate::pins::output_pin(self.pins.tft_dc.take()?, false);
@@ -360,14 +360,14 @@ impl AdafruitClue {
         db?.init(delay).ok()
     }
 
-    pub fn tft_display_spi1<'buf>(
+    pub fn tft_display_spi1(
         &mut self,
         irq: impl Binding<<embassy_nrf::peripherals::TWISPI1 as embassy_nrf::spim::Instance>::Interrupt, spim::InterruptHandler<TWISPI1>> + 'static,
-        di_buf: &'buf mut [u8],
+        di_buf: &'static mut [u8],
         delay: &mut Delay,
     ) ->
     Option<
-      mipidsi::Display<mipidsi::interface::SpiInterface<'buf, embedded_hal_bus::spi::ExclusiveDevice<spim::Spim<'_>, Output<'_>, Delay>, Output<'_>>, TFTModel, Output<'_>>
+      mipidsi::Display<mipidsi::interface::SpiInterface<'static, embedded_hal_bus::spi::ExclusiveDevice<spim::Spim<'static>, Output<'static>, Delay>, Output<'static>>, TFTModel, Output<'static>>
     >
     {
         // XXX check all devices we need ahead of time...
